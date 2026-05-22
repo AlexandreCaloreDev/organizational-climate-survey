@@ -1,22 +1,53 @@
 // src/components/pesquisas/SurveyResponseDetails.tsx
 "use client";
 
+import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ListChecks } from "lucide-react";
+import type { Resposta } from '@/lib/types';
+import { respostaService } from '@/lib/services/respostaService';
+import { apiGet } from '@/lib/api';
+import { toast } from 'sonner';
 
 interface SurveyResponseDetailsProps {
   surveyId: string;
 }
 
-// Dados mockados para a tabela
-const mockResponses = [
-    { id: 1, setor: 'TI', data: '2025-04-01', q1: '5', q2: '4', q3: '5' },
-    { id: 2, setor: 'RH', data: '2025-04-02', q1: '3', q2: '5', q3: '4' },
-    { id: 3, setor: 'Vendas', data: '2025-04-03', q1: '4', q2: '3', q3: '3' },
-];
-
 export function SurveyResponseDetails({ surveyId }: SurveyResponseDetailsProps) {
+  const [responses, setResponses] = useState<Resposta[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!surveyId) return;
+    const fetch = async () => {
+      setLoading(true);
+      setErrorMsg(null);
+      try {
+        const end = new Date();
+        const start = new Date();
+        start.setMonth(start.getMonth() - 3); // últimos 3 meses
+        
+        if (!start || !end) return;
+
+        const formatDate = (date: Date) => date.toISOString().split('T')[0];
+        
+        const data = await apiGet<Resposta[]>(
+          `/pesquisas/${surveyId}/respostas/by-date?start_date=${formatDate(start)}&end_date=${formatDate(end)}`
+        );
+        setResponses(data || []);
+      } catch (err: any) {
+        console.error(err);
+        setErrorMsg("Erro no formato da data ou período inválido");
+        toast.error("Erro no formato da data ou período inválido");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetch();
+  }, [surveyId]);
+
   return (
     <Card>
       <CardHeader>
@@ -30,10 +61,9 @@ export function SurveyResponseDetails({ surveyId }: SurveyResponseDetailsProps) 
       </CardHeader>
       <CardContent>
         <p className="text-sm text-muted-foreground mb-4">
-          **Pesquisa ID:** {surveyId} | Exibindo as últimas {mockResponses.length} respostas.
+          Pesquisa ID: {surveyId} | Exibindo as últimas {responses.length} respostas.
         </p>
-        
-        {/* Tabela de Detalhes das Respostas */}
+
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -41,28 +71,46 @@ export function SurveyResponseDetails({ surveyId }: SurveyResponseDetailsProps) 
                 <TableHead className="w-[100px]">ID Resposta</TableHead>
                 <TableHead>Setor</TableHead>
                 <TableHead>Data</TableHead>
-                <TableHead>Q1 (Liderança)</TableHead>
-                <TableHead>Q2 (Ambiente)</TableHead>
-                <TableHead>Q3 (Remuneração)</TableHead>
+                <TableHead>Pergunta</TableHead>
+                <TableHead>Resposta</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockResponses.map((response) => (
-                <TableRow key={response.id}>
-                  <TableCell className="font-medium">{response.id}</TableCell>
-                  <TableCell>{response.setor}</TableCell>
-                  <TableCell>{response.data}</TableCell>
-                  <TableCell>{response.q1}</TableCell>
-                  <TableCell>{response.q2}</TableCell>
-                  <TableCell>{response.q3}</TableCell>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center">Carregando...</TableCell>
                 </TableRow>
-              ))}
+              ) : errorMsg ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center text-red-500 font-medium">{errorMsg}</TableCell>
+                </TableRow>
+              ) : responses.length ? (
+                responses.map((r) => (
+                  <TableRow key={r.id_resposta}>
+                    <TableCell className="font-medium">{r.id_resposta}</TableCell>
+                    <TableCell>{r.pesquisa?.setor?.nome_setor ?? '-'}</TableCell>
+                    <TableCell>{new Date(r.data_submissao).toLocaleDateString('pt-BR')}</TableCell>
+                    <TableCell>{r.pergunta?.texto_pergunta ?? '-'}</TableCell>
+                    <TableCell>
+                      {typeof r.valor_resposta === 'object' 
+                        ? JSON.stringify(r.valor_resposta) 
+                        : String(r.valor_resposta) === '[object Object]' 
+                          ? 'Múltiplas opções (erro de parse)'
+                          : String(r.valor_resposta)}
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center">Nenhuma resposta encontrada para o período.</TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </div>
-        
+
         <div className="mt-4 text-center text-sm text-gray-500">
-            <p>Use o filtro de data na aba "Tendência Histórica" para refinar os resultados.</p>
+          <p>Use o filtro de data na aba "Tendência Histórica" para refinar os resultados.</p>
         </div>
       </CardContent>
     </Card>

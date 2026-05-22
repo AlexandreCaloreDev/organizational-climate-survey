@@ -6,6 +6,10 @@ export const authService = {
     return apiPost<LoginResponse>('/auth/login', { email, senha });
   },
 
+  bootstrap(data: any): Promise<any> {
+    return apiPost<any>('/bootstrap', data);
+  },
+
   logout(): Promise<void> {
     return apiPost<void>('/auth/logout', {});
   },

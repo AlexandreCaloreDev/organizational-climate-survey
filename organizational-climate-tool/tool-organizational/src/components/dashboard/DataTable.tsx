@@ -11,7 +11,7 @@ import {
   useReactTable,
   VisibilityState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react";
+import { ArrowUpDown, ChevronDown, MoreHorizontal, Download } from "lucide-react";
 import { StatusBadge } from "@/components/ui/status-badge";
 
 import { Button } from "@/components/ui/button";
@@ -34,81 +34,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ExportButton } from "@/components/ui/export-button";
-
-export const dadosPesquisas: Pesquisa[] = [
-  { id: "PESQ-001", 
-    title: "Engajamento Q1 2025", 
-    status: "concluido", participantes: 152, 
-    dataCriacao: "2025-03-28" 
-  },
-  { id: "PESQ-002", 
-    title: "Feedback de Liderança H1", 
-    status: "concluido", 
-    participantes: 140, 
-    dataCriacao: "2025-06-15" 
-  },
-  { id: "PESQ-003", 
-    title: "Pesquisa de Satisfação Anual 2024", 
-    status: "concluido", 
-    participantes: 180, 
-    dataCriacao: "2024-12-20"
-   },
-  { id: "PESQ-004", 
-    title: "Clima Organizacional H2", 
-    status: "em_andamento", 
-    participantes: 125, 
-    dataCriacao: "2025-09-01" 
-  },
-  { id: "PESQ-005", 
-    title: "Onboarding Novos Contratados", 
-    status: "em_andamento", 
-    participantes: 25, 
-    dataCriacao: "2025-09-10" 
-  },
-  { id: "PESQ-006", 
-    title: "Avaliação de Benefícios", 
-    status: "rascunho", 
-    participantes: 0, 
-    dataCriacao: "2025-09-18" 
-  },
-  { id: "PESQ-007", 
-    title: "Engajamento Q2 2025", 
-    status: "rascunho", 
-    participantes: 0, 
-    dataCriacao: "2025-09-15" 
-  },
-  { id: "PESQ-008", 
-    title: "Segurança Psicológica", 
-    status: "concluido", 
-    participantes: 165, 
-    dataCriacao: "2025-01-30" 
-  },
-  { id: "PESQ-009", 
-    title: "Comunicação Interna", 
-    status: "em_andamento", 
-    participantes: 95, 
-    dataCriacao: "2025-08-22" 
-  },
-  { id: "PESQ-010", 
-    title: "Planejamento Estratégico 2026", 
-    status: "rascunho",
-     participantes: 0, 
-     dataCriacao: "2025-09-19" 
-    },
-  { id: "PESQ-011", 
-    title: "Ferramentas de Trabalho", 
-    status: "concluido", 
-    participantes: 170, 
-    dataCriacao: "2025-05-10" 
-  },
-  { id: "PESQ-012", 
-    title: "e-NPS Semestral", 
-    status: "em_andamento", 
-    participantes: 110, 
-    dataCriacao: "2025-09-05" 
-  },
-];
+import { toast } from "sonner";
 
 export type Pesquisa = {
   id: string;
@@ -116,7 +42,9 @@ export type Pesquisa = {
   status: "concluido" | "em_andamento" | "rascunho";
   participantes: number;
   dataCriacao: string;
+  type?: string;
 };
+
 
 export const columns: ColumnDef<Pesquisa>[] = [
   {
@@ -156,7 +84,16 @@ export const columns: ColumnDef<Pesquisa>[] = [
   },
   {
     accessorKey: "status",
-    header: "Status",
+    enableSorting: true,
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      >
+        Status
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </Button>
+    ),
     cell: ({ row }) => <StatusBadge status={row.getValue("status")} />,
   },
   {
@@ -200,8 +137,8 @@ export const columns: ColumnDef<Pesquisa>[] = [
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Ações</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => onOpenExternalDataModal?.(survey)}>
-              Inserir Dados de RH
+            <DropdownMenuItem onClick={() => { window.location.href = `/resultados?pesquisa=${survey.id}`; }}>
+              Ver Detalhes
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -251,6 +188,44 @@ export function DataTable<TData, TValue>({
     },
   });
 
+  const handleExport = () => {
+    const selected = table.getFilteredSelectedRowModel().rows;
+    const all = table.getFilteredRowModel().rows;
+    const rowsToExport = selected.length > 0 ? selected : all;
+
+    if (rowsToExport.length === 0) {
+      toast.info("Nenhuma pesquisa disponível para exportação.");
+      return;
+    }
+
+    const headers = ["ID", "Título", "Status", "Criado em", "Participantes"];
+    const rows = rowsToExport.map(row => {
+      const item = row.original as any;
+      return [
+        item.id || "",
+        item.title || "",
+        item.status || "",
+        item.dataCriacao || item.data_criacao || "",
+        item.participantes !== undefined ? item.participantes.toString() : "0"
+      ];
+    });
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))
+    ].join("\n");
+
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `exportacao_pesquisas_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Pesquisas exportadas com sucesso!");
+  };
+
   return (
     <div className="w-full">
       <div className="flex items-center py-4">
@@ -261,7 +236,12 @@ export function DataTable<TData, TValue>({
             className="max-w-sm"
         />
         <div className="ml-auto flex items-center gap-2">
-          <ExportButton data={table.getFilteredRowModel().rows.map(row => row.original)} filename="dados_tabela" />
+          <Button variant="outline" size="sm" className="h-8 gap-1" onClick={handleExport}>
+            <Download className="h-3.5 w-3.5" />
+            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+              Exportar
+            </span>
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="ml-auto">
@@ -342,8 +322,8 @@ export function DataTable<TData, TValue>({
       </div>
       <div className="flex items-center justify-end space-x-2 py-4">
         <div className="text-muted-foreground flex-1 text-sm">
-          {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {table.getFilteredRowModel().rows.length} row(s) selected
+          {table.getFilteredSelectedRowModel().rows.length} de{" "}
+          {table.getFilteredRowModel().rows.length} linha(s) selecionadas.
         </div>
         <div className="space-x-2">
         <Button

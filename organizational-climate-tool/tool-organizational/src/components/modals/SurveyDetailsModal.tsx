@@ -16,7 +16,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ExternalDataForm } from "@/components/forms/ExternalDataForm";
 
 type SurveyDetailsModalProps = {
   description: string;
@@ -38,10 +37,9 @@ export const SurveyDetailsModal = ({ survey }: SurveyDetailsModalProps) => {
       </DialogHeader>
 
       <Tabs defaultValue="overview" className="h-full w-full mt-4 overflow-y-auto">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="overview">Visão Geral</TabsTrigger>
           <TabsTrigger value="questions">Perguntas e Respostas</TabsTrigger>
-          <TabsTrigger value="external-data">Indicadores de RH</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="py-4">
@@ -50,20 +48,6 @@ export const SurveyDetailsModal = ({ survey }: SurveyDetailsModalProps) => {
 
         <TabsContent value="questions" className="py-4">
           <SurveyQuestionsTab survey={survey} />
-        </TabsContent>
-
-        <TabsContent value="external-data" className="py-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Dados Externos de RH</CardTitle>
-              <CardDescription>
-                Insira indicadores como absenteísmo e turnover para cruzar com os resultados da pesquisa.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ExternalDataForm surveyId={survey.id!} />
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
     </>

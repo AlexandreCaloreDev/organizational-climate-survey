@@ -10,9 +10,10 @@ export type ApiResponse<T> = {
   error?: string;
 };
 
-const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api/v1',
-});
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api/v1';
+
+// ========== INSTÂNCIA AUTENTICADA (admin) ==========
+const api = axios.create({ baseURL: API_BASE });
 
 // Interceptor de request: injeta o token JWT em todas as requisições
 api.interceptors.request.use((config) => {
@@ -28,9 +29,23 @@ api.interceptors.response.use(
   (response) => response,
   (error: AxiosError<ApiResponse<unknown>>) => {
     if (error.response?.status === 401) {
-      if (typeof window !== 'undefined') {
+      if (typeof window !== 'undefined' && window.location.pathname.includes('/responder/')) {
+        return Promise.reject(error);
+      }
+
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
+      return Promise.reject(error);
+    }
+
+    const shouldSkipToast = 
+      error.config?.url?.includes('/dashboards') || 
+      error.config?.url?.includes('/dashboard') ||
+      error.config?.url?.includes('/respostas/stats') ||
+      error.config?.url?.includes('/respostas/count');
+
+    if (shouldSkipToast) {
       return Promise.reject(error);
     }
 
@@ -47,7 +62,12 @@ api.interceptors.response.use(
   }
 );
 
-// Helpers tipados que unwrapam `data` automaticamente
+// ========== INSTÂNCIA PÚBLICA (sem JWT, para rotas anônimas) ==========
+export const publicApi = axios.create({ baseURL: API_BASE });
+// Sem interceptores de request — nunca injeta token.
+// Sem interceptores de response — nunca redireciona para /login.
+
+// Helpers tipados — AUTENTICADOS (admin)
 export async function apiGet<T>(url: string, params?: Record<string, unknown>): Promise<T> {
   const response = await api.get<ApiResponse<T>>(url, { params });
   return response.data.data;
@@ -68,5 +88,15 @@ export async function apiDelete<T = void>(url: string): Promise<T> {
   return response.data.data;
 }
 
-export default api;
+// Helpers tipados — PÚBLICOS (sem token, para rotas anônimas)
+export async function publicApiGet<T>(url: string, params?: Record<string, unknown>): Promise<T> {
+  const response = await publicApi.get<ApiResponse<T>>(url, { params });
+  return response.data.data;
+}
 
+export async function publicApiPost<T>(url: string, body?: unknown): Promise<T> {
+  const response = await publicApi.post<ApiResponse<T>>(url, body);
+  return response.data.data;
+}
+
+export default api;

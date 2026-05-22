@@ -1,6 +1,6 @@
 "use client"; // ESSENCIAL para usar Hooks como useState, useRouter, etc.
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -9,17 +9,27 @@ import { DateRange } from 'react-day-picker';
 // Importe os componentes de gráfico que você precisa
 import { ChartLineTrends } from '@/components/dashboard/charts/ChartLineTrends';
 import { ChartBarComparative } from '@/components/dashboard/charts/ChartBarComparative';
+import { useAuth } from '@/context/AuthContext';
+import { pesquisaService } from '@/lib/services/pesquisaService';
 
 
 export default function NovoRelatorioPage() {
+  const { user } = useAuth();
   const [selectedSurveyId, setSelectedSurveyId] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [surveys, setSurveys] = useState<{ id: string; title: string }[]>([]);
 
-  // Dados mockados de exemplo (seriam obtidos de uma API)
-  const mockSurveys = [
-    { id: 'SURV-001', title: 'Engajamento Q1 2025' },
-    { id: 'SURV-002', title: 'Feedback de Liderança H1' },
-  ];
+  useEffect(() => {
+    if (!user?.empresa_id) return;
+    pesquisaService.listByEmpresa(user.empresa_id)
+      .then((data) => {
+        setSurveys((data || []).map((p: any) => ({
+          id: String(p.id_pesquisa),
+          title: p.titulo,
+        })));
+      })
+      .catch(console.error);
+  }, [user]);
 
   const handleGenerateReport = () => {
     if (!selectedSurveyId) {
@@ -54,7 +64,7 @@ export default function NovoRelatorioPage() {
                 <SelectValue placeholder="Selecione a pesquisa..." />
               </SelectTrigger>
               <SelectContent>
-                {mockSurveys.map(survey => (
+                {surveys.map(survey => (
                   <SelectItem key={survey.id} value={survey.id}>
                     {survey.title}
                   </SelectItem>

@@ -1,7 +1,6 @@
 import * as React from "react";
 import { CartesianGrid, Line, LineChart as RechartsLineChart, XAxis, YAxis } from "recharts";
 import { DateRange } from "react-day-picker";
-import { isWithinInterval, parseISO, format } from "date-fns";
 
 import {
   Card,
@@ -17,97 +16,60 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 
-const allChartData = [
-  { date: "2024-01-01", engajamento: 120, satisfacao: 100 },
-  { date: "2024-02-01", engajamento: 150, satisfacao: 130 },
-  { date: "2024-03-01", engajamento: 130, satisfacao: 110 },
-  { date: "2024-04-01", engajamento: 180, satisfacao: 160 },
-  { date: "2024-05-01", engajamento: 200, satisfacao: 180 },
-  { date: "2024-06-01", engajamento: 170, satisfacao: 150 },
-  { date: "2024-07-01", engajamento: 220, satisfacao: 200 },
-  { date: "2024-08-01", engajamento: 250, satisfacao: 230 },
-  { date: "2024-09-01", engajamento: 230, satisfacao: 210 },
-  { date: "2024-10-01", engajamento: 280, satisfacao: 260 },
-  { date: "2024-11-01", engajamento: 300, satisfacao: 280 },
-  { date: "2024-12-01", engajamento: 270, satisfacao: 250 },
-];
-
 const chartConfig = {
   engajamento: {
-    label: "Engajamento",
+    label: "Média",
     color: "hsl(var(--chart-1))",
   },
   satisfacao: {
-    label: "Satisfação",
+    label: "Total Respostas",
     color: "hsl(var(--chart-2))",
   },
 } satisfies ChartConfig;
 
 interface ChartLineTrendsProps {
   dateRange?: DateRange;
+  data?: any;
 }
 
-export function ChartLineTrends({ dateRange }: ChartLineTrendsProps) {
-  const filteredChartData = React.useMemo(() => {
-    if (!dateRange?.from) {
-      return allChartData;
-    }
-    const startDate = dateRange.from;
-    const endDate = dateRange.to || new Date();
-
-    return allChartData.filter(item => {
-      const itemDate = parseISO(item.date);
-      return isWithinInterval(itemDate, { start: startDate, end: endDate });
-    });
-  }, [dateRange]);
+export function ChartLineTrends({ dateRange, data }: ChartLineTrendsProps) {
+  const chartData = React.useMemo(() => {
+    const metricas = data?.metricas_por_pergunta || [];
+    return metricas
+      .filter((m: any) => m.media !== undefined && m.media !== null)
+      .map((m: any, i: number) => ({
+        name: m.texto_pergunta ? m.texto_pergunta.substring(0, 10) + "..." : `Q${i + 1}`,
+        engajamento: m.media ? Number(m.media.toFixed(1)) : 0,
+        satisfacao: m.total_respostas || 0,
+      }));
+  }, [data]);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Engajamento e Satisfação ao Longo do Tempo</CardTitle>
-        <CardDescription>Métricas mensais de engajamento e satisfação.</CardDescription>
+        <CardTitle>Engajamento e Satisfação por Pergunta</CardTitle>
+        <CardDescription>Métricas dinâmicas.</CardDescription>
       </CardHeader>
-      <CardContent>
-        <ChartContainer config={chartConfig}>
-          <RechartsLineChart
-            accessibilityLayer
-            data={filteredChartData}
-            margin={{
-              left: 12,
-              right: 12,
-            }}
-          >
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="date"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              tickFormatter={(value) => format(parseISO(value), "MMM yy")}
-            />
-            <YAxis tickLine={false} axisLine={false} tickMargin={8} />
-            <ChartTooltip
-              cursor={false}
-              content={<ChartTooltipContent hideLabel />}
-            />
-            <Line
-              dataKey="engajamento"
-              type="monotone"
-              stroke="#2B7FFF"
-              strokeWidth={2}
-              dot={false}
-            />
-            <Line
-              dataKey="satisfacao"
-              type="monotone"
-              stroke="#2B7FFF"
-              strokeWidth={2}
-              dot={false}
-            />
-          </RechartsLineChart>
-        </ChartContainer>
+      <CardContent className="min-h-[250px] flex items-center justify-center">
+        {chartData.length > 0 ? (
+          <ChartContainer config={chartConfig} className="w-full">
+            <RechartsLineChart
+              accessibilityLayer
+              data={chartData}
+              margin={{ left: 12, right: 12 }}
+            >
+              <CartesianGrid vertical={false} />
+              <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
+              <YAxis tickLine={false} axisLine={false} tickMargin={8} />
+              <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+              <Line dataKey="engajamento" type="monotone" stroke="#2B7FFF" strokeWidth={2} dot={false} />
+              <Line dataKey="satisfacao" type="monotone" stroke="#579BFF" strokeWidth={2} dot={false} />
+            </RechartsLineChart>
+          </ChartContainer>
+        ) : (
+          <p className="text-sm text-muted-foreground">Nenhum dado disponível.</p>
+        )}
       </CardContent>
     </Card>
   );
 }
-

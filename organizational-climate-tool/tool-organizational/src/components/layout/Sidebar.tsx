@@ -9,10 +9,13 @@ import {
   BarChart3,
   Settings,
   LucideIcon,
+  LogOut,
+  Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import LogoAtmos from "@/public/images/logoAtmos.svg";
 import Image from "next/image";
+import { useAuth } from "@/context/AuthContext";
 
 type SidebarProps = {
   isOpen: boolean;
@@ -28,11 +31,13 @@ const navLinks: NavLink[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/pesquisas", label: "Pesquisas", icon: NotebookText },
   { href: "/resultados", label: "Resultados", icon: BarChart3 },
+  { href: "/setores", label: "Setores", icon: Building2 },
   { href: "/configuracoes", label: "Configurações", icon: Settings },
 ];
 
 const Sidebar = ({ isOpen }: SidebarProps) => {
   const pathname = usePathname();
+  const { logout } = useAuth();
 
   return (
     <aside
@@ -77,6 +82,27 @@ const Sidebar = ({ isOpen }: SidebarProps) => {
           );
         })}
       </nav>
+
+      <div className="mt-auto">
+        <Button
+          variant="ghost"
+          onClick={logout}
+          className={cn(
+            "w-full justify-start cursor-pointer hover:bg-red-600 hover:text-white"
+          )}
+        >
+          <LogOut className="h-6 w-6 mr-2" />
+          <span
+            className={cn(
+              "ml-3 text-sm font-medium whitespace-nowrap overflow-hidden transition-all duration-200",
+              "w-0 opacity-0",
+              "group-hover:w-auto group-hover:opacity-100"
+            )}
+          >
+            Sair
+          </span>
+        </Button>
+      </div>
     </aside>
   );
 };

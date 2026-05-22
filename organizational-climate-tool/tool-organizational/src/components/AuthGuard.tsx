@@ -11,11 +11,19 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
   useEffect(() => {
+    if (pathname?.startsWith('/responder')) {
+      return;
+    }
+
     if (!isLoading && !isAuthenticated) {
       const redirectUrl = pathname !== '/login' ? `?redirect=${encodeURIComponent(pathname)}` : ''
       router.replace(`/login${redirectUrl}`)
     }
   }, [isAuthenticated, isLoading, pathname, router])
+
+  if (pathname?.startsWith('/responder')) {
+    return <>{children}</>
+  }
 
   if (isLoading) {
     return (

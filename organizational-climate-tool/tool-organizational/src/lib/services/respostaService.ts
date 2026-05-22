@@ -14,12 +14,12 @@ export const respostaService = {
     return apiGet<Resposta[]>(`/pesquisas/${pesquisaId}/respostas/aggregated`);
   },
 
-  countByPesquisa(pesquisaId: number): Promise<number> {
-    return apiGet<number>(`/pesquisas/${pesquisaId}/respostas/count`);
+  countByPesquisa(pesquisaId: number): Promise<{ pesquisa_id: number; total_respostas: number }> {
+    return apiGet<{ pesquisa_id: number; total_respostas: number }>(`/pesquisas/${pesquisaId}/respostas/count`);
   },
 
-  getByDateRange(pesquisaId: number, inicio: string, fim: string): Promise<Resposta[]> {
-    return apiGet<Resposta[]>(`/pesquisas/${pesquisaId}/respostas/by-date`, { inicio, fim });
+  getByDateRange(pesquisaId: number, startDate: string, endDate: string): Promise<Resposta[]> {
+    return apiGet<Resposta[]>(`/pesquisas/${pesquisaId}/respostas/by-date`, { start_date: startDate, end_date: endDate });
   },
 
   deleteByPesquisa(pesquisaId: number): Promise<void> {

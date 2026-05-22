@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import QRCode from "react-qr-code";
 import { toast } from "sonner";
-import { Copy } from "lucide-react";
+import { Copy, ExternalLink } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 
 interface SurveyLinkModalProps {
@@ -22,7 +22,7 @@ export function SurveyLinkModal({ isOpen, onClose, surveyId }: SurveyLinkModalPr
   // Gera o link apenas no cliente
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setSurveyLink(`${window.location.origin}/pesquisas/${surveyId}/responder`);
+      setSurveyLink(`${window.location.origin}/responder/${surveyId}`);
     }
   }, [surveyId]);
 
@@ -76,7 +76,11 @@ export function SurveyLinkModal({ isOpen, onClose, surveyId }: SurveyLinkModalPr
                 value={surveyLink} 
                 readOnly 
               />
-              <Button type="button" size="sm" onClick={copyToClipboard}>
+              <Button type="button" size="icon" onClick={() => window.open(surveyLink, '_blank')} title="Abrir em Nova Aba">
+                <ExternalLink className="h-4 w-4" />
+                <span className="sr-only">Abrir Link</span>
+              </Button>
+              <Button type="button" size="icon" onClick={copyToClipboard} title="Copiar URL">
                 <Copy className="h-4 w-4" />
                 <span className="sr-only">Copiar</span>
               </Button>

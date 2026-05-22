@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { Suspense, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -17,28 +17,63 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {  ListFilter, Filter, ArrowDownToLine } from "lucide-react";
-import {
-  ResultsDataTable,
-  allMockResults,
-  SurveyResult,
-} from "@/components/dashboard/ResultsDataTable";
+import { ResultsDataTable, SurveyResult } from "@/components/dashboard/ResultsDataTable";
 import { ExportReportButton } from "@/components/ui/export-report-button";
 
-import { dadosPesquisas, Pesquisa } from "@/components/dashboard/DataTable";
-
-const departamentos = [
-  "Tecnologia",
-  "Recursos Humanos",
-  "Marketing",
-  "Vendas",
-  "Financeiro",
-];
+import type { Pesquisa as BackendPesquisa } from '@/lib/types';
+import { useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
+import { buildResultsFromPerguntas } from '@/lib/buildSurveyResults';
+import { pesquisaService } from '@/lib/services/pesquisaService';
+import { dashboardService } from '@/lib/services/dashboardService';
+import { respostaService } from '@/lib/services/respostaService';
+import { setorService } from '@/lib/services/setorService';
 
 const ResultadosPage = () => {
   const [selectedSurvey, setSelectedSurvey] = useState<string>("");
   const [selectedDepartment, setSelectedDepartment] = useState<string>("todos");
   const [displayResults, setDisplayResults] = useState<SurveyResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [pesquisas, setPesquisas] = useState<BackendPesquisa[]>([]);
+  const [setores, setSetores] = useState<any[]>([]);
+  const [isLoadingSetores, setIsLoadingSetores] = useState(true);
+
+  const { user } = useAuth();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (!user?.empresa_id) return;
+    const fetch = async () => {
+      try {
+        const list = await pesquisaService.listByEmpresa(user.empresa_id);
+        setPesquisas(list || []);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    const fetchSetores = async () => {
+      try {
+        setIsLoadingSetores(true);
+        const list = await setorService.listByEmpresa(user.empresa_id);
+        setSetores(list || []);
+      } catch (err) {
+        console.error("Erro ao carregar setores:", err);
+      } finally {
+        setIsLoadingSetores(false);
+      }
+    };
+    fetch();
+    fetchSetores();
+  }, [user]);
+
+  useEffect(() => {
+    const pid = searchParams.get("pesquisa");
+    if (!pid || !pesquisas.length) return;
+    setSelectedSurvey(pid);
+    applyFilters(pid, selectedDepartment);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, pesquisas]);
 
   // Função centralizada que busca e filtra os dados
   const applyFilters = (surveyId: string, department: string) => {
@@ -48,44 +83,63 @@ const ResultadosPage = () => {
     }
 
     setIsLoading(true);
-    // Simula uma chamada de API para buscar os resultados
-    setTimeout(() => {
-      let results = allMockResults[surveyId] || [];
+    (async () => {
+      try {
+        const pid = Number(surveyId);
+        
+        // Sempre busca os detalhes da pesquisa (com as perguntas) para ter o texto e o tipo das perguntas
+        const surveyDetails = await pesquisaService.getById(pid);
+        
+        // Se o departamento for filtrado, verifica se a pesquisa pertence a este setor
+        if (department && department !== "todos") {
+          const selectedSetor = setores.find(s => s.nome_setor.toLowerCase() === department.toLowerCase());
+          if (selectedSetor && surveyDetails.id_setor !== selectedSetor.id_setor) {
+            setDisplayResults([]);
+            setIsLoading(false);
+            return;
+          }
+        }
 
-      // Se um departamento específico for selecionado (diferente de "todos"),
-      // simulamos a filtragem alterando os dados para dar um feedback visual.
-      if (department !== "todos") {
-        // Em um cenário real, você faria uma nova busca na API com o filtro
-        // de departamento ou filtraria um conjunto de dados que já contém essa informação.
-        results = results.map((result) => {
-          // Usa o nome do departamento para criar um "hash" simples e previsível
-          // para modificar os dados de forma consistente na simulação.
-          const hash = department
-            .split("")
-            .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        const perguntas = (await pesquisaService.listPerguntas(pid)) || [];
+        let stats: Record<string, Record<string, number>> = {};
+        let dadosProc: Record<string, any> = {};
 
-          // Modifica a pontuação e o número de respostas de forma simulada
-          const scoreVariation = 1 + ((hash % 10) - 4.5) / 50; // Variação de até ~ +/- 9%
-          const responseCountVariation = 0.2 + ((hash % 10) / 15); // Respostas entre 20% e ~86% do total
+        try {
+          const dashboard = await dashboardService.getByPesquisa(pid);
+          if (dashboard?.id_dashboard) {
+            const dashboardData = await dashboardService.getData(dashboard.id_dashboard);
+            dadosProc = (dashboardData as any)?.dados_processados || {};
+            Object.entries(dadosProc).forEach(([k, v]: [string, any]) => {
+              const qId = k.replace("pergunta_", "");
+              stats[qId] = v?.distribuicao || v?.dados || {};
+            });
+          }
+        } catch {
+          // fallback silencioso
+        }
 
-          const newScore = result.averageScore * scoreVariation;
-          const newResponseCount = Math.round(
-            result.responseCount * responseCountVariation,
-          );
+        if (Object.keys(stats).length === 0) {
+          try {
+            const rawStats = (await respostaService.getStatsByPesquisa(pid)) as Record<
+              string,
+              Record<string, number>
+            >;
+            Object.entries(rawStats || {}).forEach(([qId, dist]) => {
+              stats[qId] = dist || {};
+            });
+          } catch {
+            // fallback silencioso
+          }
+        }
 
-          return {
-            ...result,
-            averageScore: parseFloat(
-              Math.max(1, Math.min(5, newScore)).toFixed(1),
-            ),
-            responseCount: newResponseCount,
-          };
-        });
+        setDisplayResults(buildResultsFromPerguntas(perguntas, stats, dadosProc));
+      } catch (err) {
+        console.error("Erro ao aplicar filtros nos resultados:", err);
+        setDisplayResults([]);
+      } finally {
+        setIsLoading(false);
       }
-
-      setDisplayResults(results);
-      setIsLoading(false);
-    }, 300); // Simula um delay de rede
+    })();
   };
 
   const handleSurveyChange = (surveyId: string) => {
@@ -101,20 +155,18 @@ const ResultadosPage = () => {
     }
   };
 
-  const surveyForReport = dadosPesquisas.find((p) => p.id === selectedSurvey);
-
   return (
     <section className="container mx-auto px-4 mt-10">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
+          <h1 className="w-fit text-3xl font-bold tracking-tight bg-blue-600 text-white p-2 rounded-lg">
             Resultados Detalhados
           </h1>
           <p className="text-muted-foreground mt-2">
             Filtre e analise as respostas de cada pesquisa em detalhes.
           </p>
         </div>
-        <ExportReportButton surveyId={selectedSurvey} surveyName={surveyForReport?.title ?? "Resultados Detalhados"} />
+        <ExportReportButton surveyId={selectedSurvey} />
       </div>
 
       <Card className="mb-6">
@@ -131,9 +183,9 @@ const ResultadosPage = () => {
                 <SelectValue placeholder="Selecione a pesquisa" />
               </SelectTrigger>
               <SelectContent>
-                {dadosPesquisas.map((pesquisa: Pesquisa) => (
-                  <SelectItem key={pesquisa.id} value={pesquisa.id}>
-                    {pesquisa.title}
+                {pesquisas.map((pesquisa) => (
+                  <SelectItem key={pesquisa.id_pesquisa} value={String(pesquisa.id_pesquisa)}>
+                    {pesquisa.titulo}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -143,15 +195,21 @@ const ResultadosPage = () => {
               value={selectedDepartment}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Todos os departamentos" />
+                <SelectValue placeholder="Todos os setores" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="todos">Todos os departamentos</SelectItem>
-                {departamentos.map((depto) => (
-                  <SelectItem key={depto} value={depto.toLowerCase()}>
-                    {depto}
-                  </SelectItem>
-                ))}
+                <SelectItem value="todos">Todos os setores</SelectItem>
+                {isLoadingSetores ? (
+                  <SelectItem value="loading" disabled>Carregando setores...</SelectItem>
+                ) : setores.length > 0 ? (
+                  setores.map((setor) => (
+                    <SelectItem key={setor.id_setor} value={setor.nome_setor.toLowerCase()}>
+                      {setor.nome_setor}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="none" disabled>Nenhum setor encontrado</SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -163,4 +221,10 @@ const ResultadosPage = () => {
   );
 };
 
-export default ResultadosPage;
+export default function ResultadosPageWrapper() {
+  return (
+    <Suspense fallback={<section className="container mx-auto px-4 mt-10">Carregando...</section>}>
+      <ResultadosPage />
+    </Suspense>
+  );
+}

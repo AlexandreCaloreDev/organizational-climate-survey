@@ -1,19 +1,12 @@
+"use client";
+
+import React, { useEffect, useState } from "react";
 import { DataTable } from "@/components/dashboard/DataTable";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-}
-
-const mockUsers: User[] = [
-  { id: "1", name: "Alexandre Calore", email: "alexandre@example.com", role: "Administrador" },
-  { id: "2", name: "Guilherme Conceição", email: "guilherme@example.com", role: "Editor" },
-  { id: "3", name: "Usuário Teste", email: "teste@example.com", role: "Visualizador" },
-];
+import { useAuth } from '@/context/AuthContext';
+import { usuarioService } from '@/lib/services/usuarioService';
+import type { UsuarioAdministrador } from '@/lib/types';
 
 const columns = [
   { accessorKey: "name", header: "Nome" },
@@ -25,7 +18,6 @@ const columns = [
     cell: ({ row }: any) => (
       <Button variant="ghost" className="h-8 w-8 p-0">
         <span className="sr-only">Abrir menu</span>
-        {/* Ícone de menu ou ação */}
         ...
       </Button>
     ),
@@ -33,6 +25,29 @@ const columns = [
 ];
 
 export default function UsuariosPage() {
+  const { user, isLoading } = useAuth();
+  const [users, setUsers] = useState<UsuarioAdministrador[]>([]);
+
+  useEffect(() => {
+    if (!user?.empresa_id) return;
+    const fetch = async () => {
+      try {
+        const data = await usuarioService.listByEmpresa(user.empresa_id);
+        setUsers(data || []);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetch();
+  }, [user]);
+
+  const data = users.map((u) => ({
+    id: String(u.id_user_admin),
+    name: u.nome_admin,
+    email: u.email,
+    role: u.role || '-',
+  }));
+
   return (
     <section className="container mx-auto px-4 mt-10">
       <div className="flex justify-between items-center mb-6">
@@ -43,12 +58,14 @@ export default function UsuariosPage() {
           <Button>Adicionar Novo Usuário</Button>
         </Link>
       </div>
-      <p className="text-muted-foreground mt-2 mb-6">
-        Gerencie os usuários administradores do sistema.
-      </p>
+      <p className="text-muted-foreground mt-2 mb-6">Gerencie os usuários administradores do sistema.</p>
 
       <div className="bg-background rounded-lg border p-4 h-full">
-        <DataTable columns={columns} data={mockUsers} />
+        {isLoading ? (
+          <p>Carregando...</p>
+        ) : (
+          <DataTable columns={columns} data={data} />
+        )}
       </div>
     </section>
   );

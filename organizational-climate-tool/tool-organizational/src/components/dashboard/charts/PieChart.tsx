@@ -1,6 +1,6 @@
 "use client"
 
-import { TrendingUp } from "lucide-react"
+import { TrendingUp, Loader2 } from "lucide-react"
 import { Pie, PieChart } from "recharts"
 
 import {
@@ -20,66 +20,65 @@ import {
 
 export const description = "A pie chart with a label"
 
-const chartData = [
-    { departamento: "Tecnologia da Informação", visitors: 275, fill: "var(--color-blue-100)" },
-    { departamento: "Produção", visitors: 200, fill: "var(--color-blue-200)" },
-    { departamento: "Recursos Humanos", visitors: 187, fill: "var(--color-blue-300)" },
-    { departamento: "Vendas", visitors: 173, fill: "var(--color-blue-400)" },
-    { departamento: "Engenharia", visitors: 90, fill: "var(--color-blue-500)" },
-]
+export function ChartPieLabel({ data }: { data?: any }) {
+  const metricas = data?.metricas_por_pergunta || [];
+  const metricaComDistribuicao = metricas.find((m: any) => m.distribuicao);
 
-const chartConfig = {
-    visitors: {
-        label: "Departamentos",
-    },
-    chrome: {
-        label: "Tecnologia da Informação",
-        color: "var(--color-blue-100)",
-    },
-    safari: {
-        label: "Produção",
-        color: "var(--color-blue-200)",
-    },
-    firefox: {
-        label: "Recursos Humanos",
-        color: "var(color-blue-300)",
-    },
-    edge: {
-        label: "Vendas",
-        color: "var(color-blue-400)",
-    },
-    other: {
-        label: "Engenharia",
-        color: "var(--color-blue-500)",
-    },
-} satisfies ChartConfig
+  let chartData: any[] = [];
+  
+  if (metricaComDistribuicao && metricaComDistribuicao.distribuicao) {
+    const cores = [
+      "var(--color-blue-400)",
+      "var(--color-blue-500)",
+      "var(--color-blue-600)",
+      "var(--color-blue-700)",
+      "#0f172a",
+    ];
 
-export function ChartPieLabel() {
-    return (
-        <Card className="flex flex-col">
-            <CardHeader className="items-center pb-0">
-                <CardTitle>Distribuição de Departamentos</CardTitle>
-                <CardDescription>Janeiro - Junho 2024</CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1 pb-0">
-                <ChartContainer
-                    config={chartConfig}
-                    className="[&_.recharts-pie-label-text]:fill-foreground mx-auto aspect-square max-h-[250px] pb-0"
-                >
-                    <PieChart>
-                        <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-                        <Pie data={chartData} dataKey="visitors" label nameKey="departamento" />
-                    </PieChart>
-                </ChartContainer>
-            </CardContent>
-            <CardFooter className="flex-col gap-2 text-sm">
-                <div className="flex items-center gap-2 leading-none font-medium">
-                    Aumento de 5.2% este mês <TrendingUp className="h-4 w-4" />
-                </div>
-                <div className="text-muted-foreground leading-none">
-                    Mostrando o total dos Departamentos que responderam a pesquisa
-                </div>
-            </CardFooter>
-        </Card>
-    )
+    chartData = Object.entries(metricaComDistribuicao.distribuicao).map(([chave, valor], index) => ({
+      nome: chave,
+      valor: Number(valor),
+      fill: cores[index % cores.length],
+    }));
+  }
+
+  const chartConfig = {
+    valor: { label: "Respostas" },
+  } satisfies ChartConfig;
+
+  return (
+    <Card className="flex flex-col h-full">
+      <CardHeader className="items-center pb-0">
+        <CardTitle>Distribuição de Respostas</CardTitle>
+        <CardDescription>Métrica com maior volume de dados</CardDescription>
+      </CardHeader>
+      <CardContent className="flex-1 pb-0 flex items-center justify-center min-h-[250px]">
+        {!data ? (
+          <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
+        ) : chartData.length > 0 ? (
+          <ChartContainer
+            config={chartConfig}
+            className="[&_.recharts-pie-label-text]:fill-foreground mx-auto aspect-square max-h-[250px] pb-0 w-full"
+          >
+            <PieChart>
+              <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+              <Pie data={chartData} dataKey="valor" nameKey="nome" label />
+            </PieChart>
+          </ChartContainer>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Nenhum dado disponível.
+          </p>
+        )}
+      </CardContent>
+      <CardFooter className="flex-col gap-2 text-sm mt-4">
+        <div className="flex items-center gap-2 leading-none font-medium">
+          Atualizado dinamicamente <TrendingUp className="h-4 w-4" />
+        </div>
+        <div className="text-muted-foreground leading-none text-center">
+          Lendo informações direto da base de dados.
+        </div>
+      </CardFooter>
+    </Card>
+  );
 }

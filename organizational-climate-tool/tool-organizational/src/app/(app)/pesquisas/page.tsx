@@ -23,113 +23,82 @@ import {
 import { CreateSurveyForm } from "@/components/forms/CreateSurveyForm";
 import { SurveyDetailsModal } from "@/components/modals/SurveyDetailsModal";
 import { SurveyLinkModal } from "@/components/modals/SurveyLinkModal";
-import { Pesquisa } from "@/components/dashboard/DataTable";
-
-type Survey = Pesquisa & {
-  id?: string;
-  title: string;
-  description: string;
-  status: string;
-  tag: string;
-  creationDate: string;
-  onViewDetails: () => void;
-};
-
-const mockSurveys = [
-  {
-    id: "SURV-001",
-    title: "Engajamento Trimestral Q3",
-    description:
-      "Pesquisa para medir o nível de engajamento e satisfação dos colaboradores neste trimestre.",
-    tag: "Engajamento",
-    creationDate: "15/08/2025",
-  },
-  {
-    id: "SURV-002",
-    title: "Feedback de Liderança H2",
-    description:
-      "Avaliação 360º dos líderes e gestores da organização para o segundo semestre.",
-    tag: "Liderança",
-    creationDate: "01/09/2025",
-  },
-  {
-    id: "SURV-003",
-    title: "Pesquisa de Benefícios 2025",
-    description:
-      "Coleta de feedback sobre o pacote de benefícios atual e sugestões de melhorias.",
-    tag: "RH",
-    creationDate: "18/09/2025",
-  },
-  {
-    id: "SURV-004",
-    title: "Pesquisa de Cultura Organizacional 2025",
-    description:
-      "Coleta de feedback sobre a cultura organizacional atual e sugestões de melhorias.",
-    tag: "Cultura Organizacional",
-    creationDate: "22/10/2025",
-  },
-  {
-    id: "SURV-005",
-    title: "Pesquisa de Satisfação do Colaborador 2025",
-    description:
-      "Coleta de feedback sobre a satisfação do colaborador atual e sugestões de melhorias.",
-    tag: "Satisfação do Colaborador",
-    creationDate: "22/11/2025",
-  },
-  {
-    id: "SURV-006",
-    title: "Pesquisa de Satisfação do Cliente 2025",
-    description:
-      "Coleta de feedback sobre a satisfação do cliente atual e sugestões de melhorias.",
-    tag: "Satisfação do Cliente",
-    creationDate: "22/11/2025",
-  },
-  {
-    id: "SURV-007",
-    title: "Análise de Trabalhadores 2025",
-    description:
-      "Coleta de feedback sobre a satisfação do trabalhador atual e sugestões de melhorias.",
-    tag: "Análise de Trabalhadores",
-    creationDate: "22/11/2025",
-  },
-  {
-    id: "SURV-008",
-    title: "Pesquisa de Satisfação do Trabalhador 2025",
-    description:
-      "Coleta de feedback sobre a satisfação do trabalhador atual e sugestões de melhorias.",
-    tag: "Satisfação do Trabalhador",
-    creationDate: "22/12/2025",
-  },
-];
+import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/context/AuthContext";
+import { pesquisaService } from "@/lib/services/pesquisaService";
+import type { Pesquisa, StatusPesquisa } from "@/lib/types";
+import { InfoContext } from "@/components/pesquisas/InfoContext";
+import { WelcomeSurveyModal } from "@/components/pesquisas/WelcomeSurveyModal";
 
 const PesquisasPage = () => {
+  const { user } = useAuth();
+  const [pesquisas, setPesquisas] = React.useState<Pesquisa[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
-  const [selectedSurvey, setSelectedSurvey] = React.useState<Survey | null>(null);
+  const [selectedSurvey, setSelectedSurvey] = React.useState<Pesquisa | null>(null);
   const [searchQuery, setSearchQuery] = React.useState("");
-  
-  // Estados para o modal de QR Code
+  const [statusFilter, setStatusFilter] = React.useState<StatusPesquisa | "todos">("todos");
   const [isLinkModalOpen, setIsLinkModalOpen] = React.useState(false);
   const [selectedSurveyId, setSelectedSurveyId] = React.useState("");
 
-  const filteredSurveys = mockSurveys.filter((survey) =>
-    survey.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const fetchPesquisas = React.useCallback(async () => {
+    if (!user?.empresa_id) return;
+    setIsLoading(true);
+    try {
+      const data = await pesquisaService.listByEmpresa(user.empresa_id);
+      setPesquisas(data);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user?.empresa_id]);
+
+  React.useEffect(() => {
+    fetchPesquisas();
+  }, [fetchPesquisas]);
+
+  const filtered = pesquisas.filter((p) => {
+    const matchesSearch = p.titulo.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === "todos" || p.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
+    fetchPesquisas();
   };
 
-  // Função para gerar link/QR Code
   const handleGenerateLink = (surveyId: string) => {
     setSelectedSurveyId(surveyId);
     setIsLinkModalOpen(true);
   };
 
+  const handleDelete = async (id: string) => {
+    try {
+      await pesquisaService.delete(Number(id));
+      fetchPesquisas();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleChangeStatus = async (id: string, status: string) => {
+    try {
+      await pesquisaService.updateStatus(Number(id), status as StatusPesquisa);
+      fetchPesquisas();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   return (
     <section className="container mx-auto px-4 mt-10">
+      <WelcomeSurveyModal />
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Pesquisas</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="w-fit text-3xl font-bold tracking-tight bg-blue-600 text-white p-2 rounded-lg">Pesquisas</h1>
+            <InfoContext />
+          </div>
           <p className="text-muted-foreground mt-2">
             Crie, gerencie e visualize todos os seus formulários.
           </p>
@@ -163,51 +132,68 @@ const PesquisasPage = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <Select>
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => setStatusFilter(v as StatusPesquisa | "todos")}
+        >
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Status: Todos" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todos</SelectItem>
-            <SelectItem value="rascunho">Rascunhos</SelectItem>
-            <SelectItem value="ativo">Ativas</SelectItem>
-            <SelectItem value="concluido">Concluídas</SelectItem>
+            <SelectItem value="Rascunho">Rascunhos</SelectItem>
+            <SelectItem value="Ativa">Ativas</SelectItem>
+            <SelectItem value="Concluída">Concluídas</SelectItem>
+            <SelectItem value="Arquivada">Arquivadas</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredSurveys.length > 0 ? (
-          filteredSurveys.map((survey: any) => (
+        {isLoading ? (
+          Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-48 w-full rounded-xl" />
+          ))
+        ) : filtered.length > 0 ? (
+          filtered.map((pesquisa) => (
             <SurveyCard
-              key={survey.id || survey.title}
-              id={survey.id || survey.title}
-              title={survey.title}
-              description={survey.description}
-              tag={survey.tag}
-              creationDate={survey.creationDate}
-              onViewDetails={() => setSelectedSurvey(survey)}
+              key={pesquisa.id_pesquisa}
+              id={String(pesquisa.id_pesquisa)}
+              linkAcesso={pesquisa.link_acesso}
+              title={pesquisa.titulo}
+              description={pesquisa.descricao}
+              tag={pesquisa.status}
+              creationDate={new Date(pesquisa.data_criacao).toLocaleDateString("pt-BR")}
+              onViewDetails={() => setSelectedSurvey(pesquisa)}
               onGenerateLink={handleGenerateLink}
+              onDelete={handleDelete}
+              onChangeStatus={handleChangeStatus}
             />
           ))
         ) : (
           <p className="col-span-3 text-center text-muted-foreground py-10">
-            Nenhuma pesquisa encontrada com o termo "{searchQuery}".
+            {searchQuery
+              ? `Nenhuma pesquisa encontrada com o termo "${searchQuery}".`
+              : "Nenhuma pesquisa encontrada."}
           </p>
         )}
       </div>
 
-      {/* Modal de detalhes da pesquisa */}
-      <Dialog
-        open={!!selectedSurvey}
-        onOpenChange={(isOpen) => !isOpen && setSelectedSurvey(null)}
-      >
+      <Dialog open={!!selectedSurvey} onOpenChange={(open) => !open && setSelectedSurvey(null)}>
         <DialogContent className="sm:max-w-4xl h-[90vh] flex flex-col">
-          {selectedSurvey && <SurveyDetailsModal survey={selectedSurvey} />}
+          {selectedSurvey && (
+            <SurveyDetailsModal
+              survey={selectedSurvey as any}
+              description={selectedSurvey.descricao}
+              tag={selectedSurvey.status}
+              creationDate={new Date(
+                selectedSurvey.data_criacao,
+              ).toLocaleDateString("pt-BR")}
+            />
+          )}
         </DialogContent>
       </Dialog>
 
-      {/* Modal de QR Code */}
       {selectedSurveyId && (
         <SurveyLinkModal
           isOpen={isLinkModalOpen}

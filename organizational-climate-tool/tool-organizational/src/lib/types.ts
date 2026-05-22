@@ -4,11 +4,11 @@
 
 export type StatusPesquisa = 'Rascunho' | 'Ativa' | 'Concluída' | 'Arquivada';
 
-export type TipoPergunta = 'EscalaNumerica' | 'MultiplaEscolha' | 'TextoLivre';
+export type TipoPergunta = 'EscalaNumerica' | 'MultiplaEscolha' | 'TextoLivre' | 'RespostaAberta' | 'SimNao';
 
 export type StatusUsuario = 'Ativo' | 'Inativo' | 'Pendente';
 
-export type RoleUsuario = 'super_admin' | 'admin' | 'viewer';
+// Role do usuário removida: backend atual não fornece role no JWT
 
 // ─── Entidades ────────────────────────────────────────────────────────────────
 
@@ -29,7 +29,7 @@ export interface UsuarioAdministrador {
   email: string;
   data_cadastro: string;
   status: StatusUsuario;
-  role?: RoleUsuario;
+  role?: string;
   empresa?: Empresa;
 }
 
@@ -112,7 +112,7 @@ export interface UserInfo {
   email: string;
   empresa_id: number;
   status: StatusUsuario;
-  role?: RoleUsuario;
+  role?: string;
 }
 
 export interface LoginResponse {
@@ -141,6 +141,8 @@ export interface CreatePesquisaRequest {
   data_abertura?: string;
   data_fechamento?: string;
   anonimato: boolean;
+  id_user_admin?: number;
+  status?: StatusPesquisa;
 }
 
 export interface CreatePerguntaRequest {
@@ -151,7 +153,9 @@ export interface CreatePerguntaRequest {
 }
 
 export interface SubmitRespostaRequest {
-  id_pesquisa: number;
+  // A submissão pública utiliza `token_acesso` no body; mantemos compatibilidade
+  token_acesso?: string;
+  id_pesquisa?: number;
   respostas: Array<{
     id_pergunta: number;
     valor_resposta: string;
@@ -162,7 +166,7 @@ export interface CreateUsuarioRequest {
   nome_admin: string;
   email: string;
   senha: string;
-  role: RoleUsuario;
+  role: string;
 }
 
 export interface CreateEmpresaRequest {
@@ -192,4 +196,5 @@ export interface DashboardData {
   total_respostas: number;
   taxa_participacao: number;
   metricas_por_pergunta: MetricaPorPergunta[];
+  nps_geral?: number;
 }

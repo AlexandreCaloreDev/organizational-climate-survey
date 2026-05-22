@@ -1,3 +1,6 @@
+"use client";
+
+import React, { useEffect, useState } from "react";
 import { DataTable } from "@/components/dashboard/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
 import { MoreHorizontal } from "lucide-react";
@@ -5,6 +8,9 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Badge, badgeVariants } from "@/components/ui/badge";
 import type { VariantProps } from "class-variance-authority";
+import { useAuth } from "@/context/AuthContext";
+import { auditoriaService } from "@/lib/services/auditoriaService";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export type AuditLog = {
   id: string;
@@ -15,17 +21,6 @@ export type AuditLog = {
   entityId: string;
   status: "success" | "failed" | "info";
 };
-
-const mockAuditLogs: AuditLog[] = [
-  { id: "LOG-001", timestamp: "2025-10-12 10:00:00", user: "admin@example.com", action: "LOGIN", entity: "Auth", entityId: "N/A", status: "success" },
-  { id: "LOG-002", timestamp: "2025-10-12 10:05:15", user: "user1@example.com", action: "CREATE_SURVEY", entity: "Survey", entityId: "SURV-007", status: "success" },
-  { id: "LOG-003", timestamp: "2025-10-12 10:10:30", user: "admin@example.com", action: "UPDATE_COMPANY", entity: "Company", entityId: "COMP-001", status: "success" },
-  { id: "LOG-004", timestamp: "2025-10-12 10:15:00", user: "user2@example.com", action: "LOGIN", entity: "Auth", entityId: "N/A", status: "failed" },
-  { id: "LOG-005", timestamp: "2025-10-12 10:20:45", user: "admin@example.com", action: "DELETE_USER", entity: "User", entityId: "USER-003", status: "info" },
-  { id: "LOG-006", timestamp: "2025-10-12 10:25:00", user: "user1@example.com", action: "RESPOND_SURVEY", entity: "Survey", entityId: "SURV-001", status: "success" },
-  { id: "LOG-007", timestamp: "2025-10-12 10:30:00", user: "admin@example.com", action: "VIEW_REPORT", entity: "Report", entityId: "REP-001", status: "success" },
-  { id: "LOG-008", timestamp: "2025-10-12 10:35:00", user: "user3@example.com", action: "CREATE_COMPANY", entity: "Company", entityId: "COMP-005", status: "failed" },
-];
 
 const columns: ColumnDef<AuditLog>[] = [
   { accessorKey: "timestamp", header: "Data/Hora" },
@@ -88,6 +83,29 @@ const columns: ColumnDef<AuditLog>[] = [
 ];
 
 export default function AuditoriaPage() {
+  const { user, isLoading: authLoading } = useAuth();
+  const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user?.empresa_id) return;
+    setIsLoading(true);
+    auditoriaService.listByEmpresa(user.empresa_id)
+      .then((data) => {
+        setLogs((data || []).map((l: any) => ({
+          id: String(l.id_log ?? l.id ?? ""),
+          timestamp: l.data_hora ? new Date(l.data_hora).toLocaleString("pt-BR") : "-",
+          user: l.usuario || l.nome_usuario || "-",
+          action: l.acao || "-",
+          entity: l.entidade || "-",
+          entityId: String(l.id_entidade ?? ""),
+          status: (l.status as "success" | "failed" | "info") || "info",
+        })));
+      })
+      .catch(console.error)
+      .finally(() => setIsLoading(false));
+  }, [user]);
+
   return (
     <section className="container mx-auto px-4 mt-10">
       <div className="flex justify-between items-center mb-6">
@@ -100,7 +118,15 @@ export default function AuditoriaPage() {
       </p>
 
       <div className="bg-background rounded-lg border p-4 h-full">
-        <DataTable columns={columns} data={mockAuditLogs} />
+        {isLoading || authLoading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        ) : (
+          <DataTable columns={columns} data={logs} />
+        )}
       </div>
     </section>
   );

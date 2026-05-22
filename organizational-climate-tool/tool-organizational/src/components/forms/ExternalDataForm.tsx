@@ -12,7 +12,7 @@ import { useMemo } from "react";
 import { PlusCircle, Trash2, TrendingUp } from "lucide-react";
 
 const absenceRecordSchema = z.object({
-  dias: z.coerce.number({ required_error: "Informe os dias." }).min(0.5, "Mínimo 0.5."),
+  dias: z.coerce.number().min(0.5, "Mínimo 0.5."),
 });
 
 const externalDataSchema = z.object({
@@ -36,7 +36,7 @@ interface ExternalDataFormProps {
 }
 
 export const ExternalDataForm = ({ surveyId }: ExternalDataFormProps) => {
-  const form = useForm<ExternalDataFormValues>({
+  const form = useForm<any>({
     resolver: zodResolver(externalDataSchema),
     // Em um aplicativo real, você buscaria e definiria os valores padrão aqui
     defaultValues: {
@@ -58,7 +58,7 @@ export const ExternalDataForm = ({ surveyId }: ExternalDataFormProps) => {
   const watchedValues = form.watch();
 
   const totalDiasFalta = useMemo(() => {
-    return watchedValues.registrosFaltas?.reduce((sum, current) => sum + (current.dias || 0), 0) || 0;
+    return watchedValues.registrosFaltas?.reduce((sum: number, current: any) => sum + (current.dias || 0), 0) || 0;
   }, [watchedValues.registrosFaltas]);
 
   const absenteismoCalculado = useMemo(() => {

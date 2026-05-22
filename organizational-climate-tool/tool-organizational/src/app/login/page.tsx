@@ -30,19 +30,11 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormInputs) => {
     setLoginError(null);
     try {
-      // Simular uma chamada de API para autenticação
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      if (data.email === 'test@example.com' && data.password === 'password123') {
-        // Simular a obtenção de um token real
-        const fakeToken = 'fake-jwt-token-12345';
-        login(data.email, fakeToken);
-        router.push('/dashboard'); // Redireciona para o dashboard após o login
-      } else {
-        setLoginError('Credenciais inválidas. Por favor, tente novamente.');
-      }
-    } catch (error) {
-      setLoginError('Ocorreu um erro ao tentar fazer login. Por favor, tente novamente mais tarde.');
+      await login(data.email, data.password);
+      router.push('/dashboard');
+    } catch (error: any) {
+      const msg = error?.response?.data?.message || error?.response?.data?.error || error?.message || 'Credenciais inválidas. Por favor, tente novamente.';
+      setLoginError(msg);
       console.error('Login error:', error);
     }
   };
@@ -78,7 +70,7 @@ export default function LoginPage() {
               </form>
               <div className="mt-6 text-center text-sm">
                 Ainda não tem uma conta?{' '}
-                <Link href="#" className="underline text-blue-600 hover:text-blue-700">
+                <Link href="/empresas/nova" className="underline text-blue-600 hover:text-blue-700">
                   Cadastre-se!
                 </Link>
               </div>

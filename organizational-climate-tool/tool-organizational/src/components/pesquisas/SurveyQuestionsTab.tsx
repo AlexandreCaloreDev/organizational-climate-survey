@@ -1,7 +1,6 @@
-// src/components/dashboard/tabs/SurveyQuestionsTab.tsx
-
 "use client";
 
+import React, { useEffect, useState } from "react";
 import {
   Accordion,
   AccordionContent,
@@ -11,159 +10,212 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import type { Pesquisa, Pergunta } from '@/lib/types';
+import { apiGet } from "@/lib/api";
+import { perguntaService } from "@/lib/services/perguntaService";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
 
-type QuestionResult = {
-  id: string;
-  text: string;
-  type: "escala" | "multipla-escolha" | "texto-aberto";
-  results: any;
-  category: string;
-};
+// Componente para exibir respostas de texto livre (sem gráficos)
+const TextAnswerDetails = ({ question }: { question: any }) => {
+  const stats = question.estatisticas;
 
-const mockQuestions: QuestionResult[] = [
-  {
-    id: "q1",
-    text: "Em uma escala de 1 a 5, quão satisfeito você está com a liderança?",
-    type: "escala",
-    category: "Liderança",
-    results: { "1": 10, "2": 25, "3": 40, "4": 120, "5": 98 },
-  },
-  {
-    id: "q2",
-    text: "Qual benefício você mais valoriza na empresa?",
-    type: "multipla-escolha",
-    category: "Bem-estar",
-    results: {
-      total: 293,
-      options: [
-        { label: "Plano de Saúde", count: 150 },
-        { label: "Vale Alimentação", count: 80 },
-        { label: "Horário Flexível", count: 63 },
-      ],
-    },
-  },
-  {
-    id: "q3",
-    text: "Que sugestões você daria para melhorar a comunicação interna?",
-    type: "texto-aberto",
-    category: "Comunicação",
-    results: [
-      "Ter reuniões semanais mais curtas e objetivas.",
-      "Criar um canal de feedback anônimo mais divulgado.",
-      "Melhorar a transparência nas decisões da diretoria.",
-      "A newsletter interna poderia ser mais focada em conquistas das equipes.",
-    ],
-  },
-  {
-    id: "q4",
-    text: "Sinto que tenho autonomia para tomar decisões no meu trabalho.",
-    type: "escala",
-    category: "Cultura Organizacional",
-    results: { "1": 5, "2": 15, "3": 55, "4": 110, "5": 108 },
-  },
-  {
-    id: "q5",
-    text: "Com que frequência você tem reuniões 1-on-1 com seu gestor?",
-    type: "multipla-escolha",
-    category: "Liderança",
-    results: {
-      total: 293,
-      options: [
-        { label: "Semanalmente", count: 120 },
-        { label: "Quinzenalmente", count: 95 },
-        { label: "Mensalmente", count: 58 },
-        { label: "Raramente ou nunca", count: 20 },
-      ],
-    },
-  },
-  {
-    id: "q6",
-    text: "Descreva um momento em que você se sentiu orgulhoso(a) de trabalhar aqui.",
-    type: "texto-aberto",
-    category: "Bem-estar",
-    results: [
-      "Quando lançamos o projeto X e recebemos elogios do cliente.",
-      "No último evento de confraternização da empresa.",
-      "Quando meu gestor reconheceu meu esforço publicamente.",
-    ],
-  },
-];
-
-const AnswerDetails = ({ question }: { question: QuestionResult }) => {
-  switch (question.type) {
-    case "escala":
-      const totalResponses = Object.values(question.results).reduce(
-        (sum: number, count: any) => sum + count,
-        0
-      );
-      return (
-        <div className="flex flex-col gap-2">
-          {Object.entries(question.results).map(
-            ([score, count]: [string, any]) => (
-              <div key={score} className="flex items-center gap-4">
-                <span className="text-sm font-medium w-12">Nota {score}</span>
-                <Progress
-                  value={(count / totalResponses) * 100}
-                  className="flex-1"
-                />
-                <span className="text-sm text-muted-foreground">
-                  {count} resp.
-                </span>
-              </div>
-            )
-          )}
-        </div>
-      );
-    case "multipla-escolha":
-      return (
-        <div className="flex flex-col gap-2">
-          {question.results.options.map((opt: any) => (
-            <div key={opt.label} className="flex items-center gap-4">
-              <span className="text-sm font-medium w-32 truncate">
-                {opt.label}
-              </span>
-              <Progress
-                value={(opt.count / question.results.total) * 100}
-                className="flex-1"
-              />
-              <span className="text-sm text-muted-foreground">
-                {opt.count} resp.
-              </span>
-            </div>
-          ))}
-        </div>
-      );
-    case "texto-aberto":
-      return (
-        <div className="flex flex-col gap-3">
-          {question.results.map((text: string, index: number) => (
-            <Card key={index}>
-              <CardContent className="p-4 text-sm text-muted-foreground">
-                "{text}"
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      );
-    default:
-      return null;
+  if (!stats || !stats.distribuicao || Object.keys(stats.distribuicao).length === 0 || stats.total_respostas === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">Nenhuma resposta textual registrada.</p>
+    );
   }
+
+  const respostas = Object.entries(stats.distribuicao);
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-sm font-medium text-gray-700">{stats.total_respostas} resposta(s) recebida(s):</p>
+      <div className="max-h-60 overflow-y-auto space-y-2">
+        {respostas.map(([texto, qtd]: [string, any], idx) => (
+          <div key={idx} className="bg-white border rounded-md p-3 text-sm text-gray-800">
+            <span>&ldquo;{texto}&rdquo;</span>
+            {Number(qtd) > 1 && (
+              <Badge variant="outline" className="ml-2 text-xs">x{qtd}</Badge>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 };
 
-export const SurveyQuestionsTab = () => {
+// Componente para exibir gráficos de distribuição (escala, múltipla escolha, sim/não)
+const ChartAnswerDetails = ({ question }: { question: any }) => {
+  const stats = question.estatisticas;
+
+  if (!stats || !stats.distribuicao || Object.keys(stats.distribuicao).length === 0 || stats.total_respostas === 0) {
+    return (
+      <div className="flex flex-col gap-2">
+        <p className="text-sm text-muted-foreground mb-2">Nenhuma resposta registrada para esta pergunta.</p>
+        <div className="flex items-center gap-2">
+          <Progress value={0} className="flex-1" />
+          <span className="text-xs">0%</span>
+        </div>
+      </div>
+    );
+  }
+
+  const distribuicao = stats.distribuicao;
+
+  // Normaliza as chaves da distribuição
+  const normalizedDistribuicao: Record<string, number> = {};
+  Object.entries(distribuicao).forEach(([key, value]) => {
+    if (typeof value !== 'number') return;
+    if (key === '[object Object]') return;
+    
+    if (key.includes(',')) {
+      const subKeys = key.split(',').map(k => k.trim()).filter(Boolean);
+      subKeys.forEach(subKey => {
+        normalizedDistribuicao[subKey] = (normalizedDistribuicao[subKey] || 0) + value;
+      });
+    } else {
+      normalizedDistribuicao[key] = (normalizedDistribuicao[key] || 0) + value;
+    }
+  });
+
+  const entries = Object.entries(normalizedDistribuicao).filter(([_, v]) => typeof v === 'number');
+
+  if (entries.length === 0) {
+    return (
+      <div className="flex flex-col gap-2">
+        <p className="text-sm text-muted-foreground mb-2">Nenhuma resposta registrada para esta pergunta.</p>
+      </div>
+    );
+  }
+
+  const normalizedTotal = Object.values(normalizedDistribuicao).reduce((a, b) => a + b, 0) || 1;
+
+  const chartData = entries.map(([opcao, qtd]) => ({
+    name: opcao,
+    quantidade: Number(qtd),
+    porcentagem: Math.round((Number(qtd) / normalizedTotal) * 100) || 0,
+  }));
+
   return (
-    <div className="overflow-y-auto pr-4 h-full hover:no-underline">
-      <Accordion type="single" collapsible className="w-full ">
-        {mockQuestions.map((question) => (
-          <AccordionItem value={question.id} key={question.id}>
+    <div className="flex flex-col md:flex-row gap-6 items-center">
+      <div className="flex flex-col gap-4 flex-1 w-full">
+        <div className="flex justify-between text-xs font-bold text-muted-foreground mb-2 border-b pb-1"><span>Opção</span><span>Distribuição</span></div>
+        {entries.map(([opcao, qtd]: [string, any]) => {
+          const percent = Math.round((Number(qtd) / normalizedTotal) * 100) || 0;
+          return (
+            <div key={opcao} className="flex flex-col gap-1">
+              <div className="flex justify-between text-sm text-gray-700">
+                <span>{opcao}</span>
+                <span className="font-semibold">{percent}%</span>
+              </div>
+              <Progress value={percent} className="h-2" />
+            </div>
+          );
+        })}
+      </div>
+      <div className="h-44 w-full md:w-64 mt-2 md:mt-0 flex-shrink-0">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData} margin={{ left: -10, right: 10, top: 10, bottom: 5 }}>
+            <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+            <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} width={30} />
+            <Tooltip
+              content={({ active, payload }) => {
+                if (active && payload && payload.length) {
+                  const data = payload[0].payload;
+                  return (
+                    <div className="bg-white p-2 border rounded shadow text-xs">
+                      <p className="font-semibold">{data.name}</p>
+                      <p className="text-blue-600 font-medium">{data.quantidade} respostas ({data.porcentagem}%)</p>
+                    </div>
+                  );
+                }
+                return null;
+              }}
+            />
+            <Bar dataKey="quantidade" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={24} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+};
+
+export const SurveyQuestionsTab = ({ survey }: { survey?: any }) => {
+  const [perguntasComStats, setPerguntasComStats] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchQuestionsAndStats = async () => {
+      if (!survey?.id_pesquisa && !survey?.id) return;
+      
+      const surveyId = survey.id_pesquisa || survey.id;
+      
+      try {
+        const fetchedPerguntas = await perguntaService.listByPesquisa(Number(surveyId));
+        
+        // Tenta buscar stats — pode falhar se a pesquisa não tem respostas
+        let statsMap: Record<string, Record<string, number>> = {};
+        try {
+          statsMap = await apiGet<Record<string, Record<string, number>>>(`/pesquisas/${surveyId}/respostas/stats`);
+        } catch (statsErr) {
+          // Pesquisas sem respostas retornam 500 — silenciamos e mostramos "0 respostas"
+          console.warn("Stats indisponível para pesquisa", surveyId);
+        }
+        
+        const mapped = (fetchedPerguntas || []).map((q: any) => {
+          const qId = String(q.id_pergunta);
+          const distribuicao = statsMap[qId] || {};
+          const total_respostas = Object.values(distribuicao).reduce((acc: number, val: number) => acc + val, 0);
+          return {
+            ...q,
+            estatisticas: {
+              distribuicao,
+              total_respostas,
+            }
+          };
+        });
+        setPerguntasComStats(mapped);
+      } catch (err) {
+        console.error("Erro ao buscar perguntas", err);
+      }
+    };
+    fetchQuestionsAndStats();
+  }, [survey]);
+
+  const perguntas = perguntasComStats.length > 0 ? perguntasComStats : (survey?.perguntas || []);
+
+  if (perguntas.length === 0) {
+    return <p className="text-center py-10 text-muted-foreground">Nenhuma pergunta cadastrada para esta pesquisa.</p>;
+  }
+
+  const formatTipoPergunta = (tipo: string) => {
+    switch (tipo) {
+      case 'RespostaAberta': return 'Texto Livre';
+      case 'MultiplaEscolha': return 'Múltipla Escolha';
+      case 'EscalaNumerica': return 'Escala Numérica (1-10)';
+      case 'SimNao': return 'Sim/Não';
+      default: return tipo;
+    }
+  };
+
+  return (
+    <div className="overflow-y-auto pr-4 h-full">
+      <Accordion type="single" collapsible className="w-full">
+        {perguntas.map((q: any) => (
+          <AccordionItem value={String(q.id_pergunta)} key={q.id_pergunta}>
             <AccordionTrigger>
-              <div className="flex items-center gap-4 text-left hover:no-underline">
-                <Badge>{question.category || question.type}</Badge>
-                <span>{question.text}</span>
+              <div className="flex items-center gap-4 text-left">
+                <Badge variant="secondary">{formatTipoPergunta(q.tipo_pergunta)}</Badge>
+                <span>{q.texto_pergunta}</span>
               </div>
             </AccordionTrigger>
             <AccordionContent>
-              <AnswerDetails question={question} />
+              <div className="p-4 bg-slate-50 rounded-md">
+                {q.tipo_pergunta === 'RespostaAberta' ? (
+                  <TextAnswerDetails question={q} />
+                ) : (
+                  <ChartAnswerDetails question={q} />
+                )}
+              </div>
             </AccordionContent>
           </AccordionItem>
         ))}

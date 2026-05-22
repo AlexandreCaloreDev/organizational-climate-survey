@@ -117,6 +117,14 @@ func SetupRouter(config *RouterConfig) *mux.Router {
 		submissaoHandler.RegisterPublicRoutes(publicRoutes)
 	}
 
+	// NOVO: Permitir obter pesquisa por link e listar perguntas publicamente para responder
+	if pesquisaHandler != nil {
+		publicRoutes.HandleFunc("/pesquisas/link/{link}", pesquisaHandler.GetPesquisaByLink).Methods("GET")
+	}
+	if perguntaHandler != nil {
+		publicRoutes.HandleFunc("/pesquisas/{pesquisa_id:[0-9]+}/perguntas", perguntaHandler.ListPerguntasByPesquisa).Methods("GET")
+	}
+
 	// === ROTAS DE SUBMISSÃO DE RESPOSTAS (anônimas com token) ===
 	if respostaHandler != nil && config.PesquisaRepo != nil {
 		surveyRoutes := api.PathPrefix("").Subrouter()

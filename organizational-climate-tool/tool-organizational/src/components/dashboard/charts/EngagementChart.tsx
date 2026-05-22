@@ -19,17 +19,9 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 
 export const description = "A stacked bar chart with a legend";
-
-const chartData = [
-  { month: "January", positivo: 186, negativo: 80 },
-  { month: "February", positivo: 305, negativo: 200 },
-  { month: "March", positivo: 237, negativo: 120 },
-  { month: "April", positivo: 73, negativo: 190 },
-  { month: "May", positivo: 209, negativo: 130 },
-  { month: "June", positivo: 214, negativo: 140 },
-];
 
 const chartConfig = {
   positivo: {
@@ -42,47 +34,71 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export function ChartBarStacked() {
+export function ChartBarStacked({ data }: { data?: any }) {
+  const metricas = data?.metricas_por_pergunta || [];
+
+  const formatado = metricas.slice(0, 5).map((m: any) => {
+    let pos = 0;
+    let neg = 0;
+
+    if (m.distribuicao) {
+      Object.entries(m.distribuicao).forEach(([nota, qtd]) => {
+        const numNota = Number(nota);
+        const quantidade = Number(qtd);
+
+        if (numNota >= 7) pos += quantidade;
+        else if (numNota > 0) neg += quantidade;
+        else {
+          if (["promotor", "bom", "excelente", "sim"].some((palavra) => nota.toLowerCase().includes(palavra))) {
+            pos += quantidade;
+          } else {
+            neg += quantidade;
+          }
+        }
+      });
+    } else if (m.media) {
+      // Escala 1-10: media >= 7 = maioria positiva
+      pos = Math.round((m.media / 10) * (m.total_respostas || 10));
+      neg = (m.total_respostas || 10) - pos;
+    }
+
+    return {
+      categoria: m.texto_pergunta ? m.texto_pergunta.substring(0, 12) + "..." : "Métrica",
+      positivo: pos,
+      negativo: neg,
+    };
+  });
+
+  const chartData = formatado.length > 0 ? formatado : [{ categoria: "Sem dados", positivo: 0, negativo: 0 }];
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Gráfico de Barras - Positivo + Negativo</CardTitle>
-        <CardDescription>Janeiro - Junho 2024</CardDescription>
+        <CardTitle className="flex items-center">
+          Gráfico de Barras - Positivo + Negativo
+          <InfoTooltip text="Notas ≥ 7 = Positivo, < 7 = Negativo. Exibe as 5 primeiras perguntas." />
+        </CardTitle>
+        <CardDescription>Resumo de respostas positivas e negativas</CardDescription>
       </CardHeader>
-      <CardContent>
-        <ChartContainer config={chartConfig}>
-          <BarChart accessibilityLayer data={chartData}>
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="month"
-              tickLine={false}
-              tickMargin={10}
-              axisLine={false}
-              tickFormatter={(value) => value.slice(0, 3)}
-            />
-            <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-            <ChartLegend content={<ChartLegendContent />} />
-            <Bar
-              dataKey="positivo"
-              stackId="a"
-              fill="var(--color-positivo)"
-              radius={[0, 0, 4, 4]}
-            />
-            <Bar
-              dataKey="negativo"
-              stackId="a"
-              fill="var(--color-negativo)"
-              radius={[4, 4, 0, 0]}
-            />
-          </BarChart>
-        </ChartContainer>
+      <CardContent className="min-h-[250px] flex items-center justify-center">
+        {chartData.length > 0 && chartData[0]?.categoria !== "Sem dados" ? (
+          <ChartContainer config={chartConfig} className="w-full">
+            <BarChart accessibilityLayer data={chartData}>
+              <CartesianGrid vertical={false} />
+              <XAxis dataKey="categoria" tickLine={false} tickMargin={10} axisLine={false} />
+              <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+              <ChartLegend content={<ChartLegendContent />} />
+              <Bar dataKey="positivo" stackId="a" fill="var(--color-blue-400)" radius={[0, 0, 4, 4]} />
+              <Bar dataKey="negativo" stackId="a" fill="var(--color-blue-600)" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ChartContainer>
+        ) : (
+          <p className="text-sm text-muted-foreground">Nenhum dado disponível.</p>
+        )}
       </CardContent>
       <CardFooter className="flex-col items-start gap-2 text-sm">
-        <div className="flex gap-2 leading-none font-medium">
-          Aumento de 5.2% este mês <TrendingUp className="h-4 w-4" />
-        </div>
         <div className="text-muted-foreground leading-none">
-          Mostrando o total de Respostas para os últimos 6 meses
+          Mostrando o total de Respostas
         </div>
       </CardFooter>
     </Card>

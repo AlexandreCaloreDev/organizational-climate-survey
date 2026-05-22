@@ -1,25 +1,48 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
 import { SurveyResponseDetails } from "@/components/pesquisas/SurveyResponseDetails";
 import { SurveyHistoricalTrends } from "@/components/pesquisas/SurveyHistoricalTrends";
 import { ExportReportButton } from "@/components/ui/export-report-button";
-
-const mockSurvey = {
-  id: "SURV-001",
-  title: "Engajamento Q1 2025",
-  status: "concluido",
-  participants: 152,
-  createdAt: "2025-03-28",
-};
+import { pesquisaService } from "@/lib/services/pesquisaService";
+import type { Pesquisa } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SurveyDetailsPage({ params }: { params: { id: string } }) {
+  const [survey, setSurvey] = useState<Pesquisa | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [dateRange, setDateRange] = useState<any | undefined>(undefined);
+
+  useEffect(() => {
+    setIsLoading(true);
+    pesquisaService.getById(Number(params.id))
+      .then(setSurvey)
+      .catch(console.error)
+      .finally(() => setIsLoading(false));
+  }, [params.id]);
+
+  if (isLoading) {
+    return (
+      <section className="container mx-auto px-4 mt-10 space-y-4">
+        <Skeleton className="h-10 w-1/2" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </section>
+    );
+  }
+
+  if (!survey) {
+    return (
+      <section className="container mx-auto px-4 mt-10">
+        <p className="text-center text-muted-foreground py-10">Pesquisa não encontrada.</p>
+      </section>
+    );
+  }
 
   return (
     <section className="container mx-auto px-4 mt-10">
@@ -32,20 +55,20 @@ export default function SurveyDetailsPage({ params }: { params: { id: string } }
           </Link>
 
           <h1 className="w-fit text-3xl font-bold tracking-tight bg-blue-500 text-white p-2 rounded-lg">
-            Resultados: {mockSurvey.title}
+            Resultados: {survey.titulo}
           </h1>
         </div>
 
         <div className="flex items-center space-x-4">
-          <ExportReportButton surveyId={params.id} surveyName={mockSurvey.title} />
+          <ExportReportButton surveyId={String(params.id)} />
         </div>
       </div>
       <Card className="mb-6">
         <CardContent className="pt-6">
           <div className="grid grid-cols-3 gap-4 text-sm">
-            <p><strong>ID:</strong> {mockSurvey.id}</p>
-            <p><strong>Status:</strong> {mockSurvey.status}</p>
-            <p><strong>Participantes:</strong> {mockSurvey.participants}</p>
+            <p><strong>ID:</strong> {survey.id_pesquisa}</p>
+            <p><strong>Status:</strong> {survey.status}</p>
+            <p><strong>Participantes:</strong> {(survey as any).participantes ?? 0}</p>
           </div>
         </CardContent>
       </Card>

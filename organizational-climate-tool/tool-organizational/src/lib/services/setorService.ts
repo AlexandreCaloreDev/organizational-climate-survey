@@ -10,8 +10,8 @@ export const setorService = {
     return apiGet<Setor>(`/setores/${id}`);
   },
 
-  create(data: CreateSetorRequest): Promise<Setor> {
-    return apiPost<Setor>('/setores', data);
+  create(empresaId: number, data: { nome_setor: string; descricao?: string }): Promise<Setor> {
+    return apiPost<Setor>('/setores', { id_empresa: empresaId, ...data });
   },
 
   update(id: number, data: Partial<CreateSetorRequest>): Promise<Setor> {

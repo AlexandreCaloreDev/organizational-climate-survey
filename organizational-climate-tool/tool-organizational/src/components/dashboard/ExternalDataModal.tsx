@@ -39,7 +39,7 @@ export const ExternalDataModal = ({
   surveyTitle,
   onSave,
 }: ExternalDataModalProps) => {
-  const form = useForm<ExternalDataForm>({
+  const form = useForm<any>({
     resolver: zodResolver(externalDataSchema),
     defaultValues: {
       absenteismo: undefined,

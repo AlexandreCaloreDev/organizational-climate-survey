@@ -15,7 +15,8 @@ export const perguntaService = {
   },
 
   createBatch(pesquisaId: number, perguntas: CreatePerguntaRequest[]): Promise<Pergunta[]> {
-    return apiPost<Pergunta[]>('/perguntas/batch', { id_pesquisa: pesquisaId, perguntas });
+    const payload = perguntas.map(p => ({ ...p, id_pesquisa: pesquisaId }));
+    return apiPost<Pergunta[]>('/perguntas/batch', payload);
   },
 
   update(id: number, data: Partial<CreatePerguntaRequest>): Promise<Pergunta> {

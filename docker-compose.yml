@@ -4,16 +4,16 @@ services:
     container_name: clima_db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${DB_NAME:-clima_organizacional}
-      POSTGRES_USER: ${DB_USER:-clima_user}
-      POSTGRES_PASSWORD: ${DB_PASS:-clima_password}
+      POSTGRES_DB: clima_organizacional
+      POSTGRES_USER: clima_user
+      POSTGRES_PASSWORD: clima_password
     ports:
       - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
       - ./backend/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-clima_user} -d ${DB_NAME:-clima_organizacional}"]
+      test: ["CMD-SHELL", "pg_isready -U clima_user -d clima_organizacional"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -28,20 +28,44 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    env_file:
-      - path: .env
-        required: false
     environment:
       DB_HOST: db
       DB_PORT: 5432
+      DB_USER: clima_user
+      DB_PASS: clima_password
+      DB_NAME: clima_organizacional
       DB_SSLMODE: disable
       APP_PORT: 8080
+      JWT_SECRET: super_secret_local_key
+      HASH_SALT: super_secret_salt
+      LOG_LEVEL: debug
     ports:
       - "8080:8080"
     volumes:
       - qrcode_data:/app/uploads/qrcodes
+      - ./backend/docs:/app/docs
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  frontend:
+    build:
+      context: ./organizational-climate-tool/tool-organizational
+      dockerfile: Dockerfile
+    container_name: clima_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8080/api/v1
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -f http://localhost:3000/ || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3

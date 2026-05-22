@@ -1,12 +1,10 @@
 import * as React from "react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Legend } from "recharts";
 import { DateRange } from "react-day-picker";
-import { isWithinInterval, parseISO } from "date-fns";
 
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -17,77 +15,49 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 
-const allChartData = [
-  { category: "Liderança", q1: 60, q2: 75, q3: 70 },
-  { category: "Comunicação", q1: 70, q2: 65, q3: 80 },
-  { category: "Colaboração", q1: 80, q2: 85, q3: 75 },
-  { category: "Reconhecimento", q1: 50, q2: 60, q3: 65 },
-  { category: "Desenvolvimento", q1: 75, q2: 80, q3: 85 },
-];
-
 const chartConfig = {
-  q1: {
-    label: "Q1",
-    color: "hsl(var(--chart-1))",
-  },
-  q2: {
-    label: "Q2",
-    color: "hsl(var(--chart-2))",
-  },
-  q3: {
-    label: "Q3",
-    color: "hsl(var(--chart-3))",
-  },
+  media: { label: "Média (1-10)", color: "var(--color-blue-600)" },
 } satisfies ChartConfig;
 
 interface ChartBarComparativeProps {
   dateRange?: DateRange;
+  data?: any;
 }
 
-export function ChartBarComparative({ dateRange }: ChartBarComparativeProps) {
-  // Para este gráfico comparativo, o dateRange pode ser usado para selecionar quais trimestres/períodos comparar
-  // Por simplicidade, vamos manter os dados mockados fixos por enquanto, mas a prop está disponível.
-  console.log("Date range for ChartBarComparative:", dateRange);
+export function ChartBarComparative({ dateRange, data }: ChartBarComparativeProps) {
+  const chartData = React.useMemo(() => {
+    const metricas = data?.metricas_por_pergunta || data?.metricas || [];
+    return metricas
+      .filter((m: any) => m.media !== undefined && m.media !== null)
+      .map((m: any, i: number) => ({
+        category: m.texto_pergunta ? m.texto_pergunta.substring(0, 15) + "..." : `Q${i + 1}`,
+        media: m.media ? Number(m.media.toFixed(1)) : 0,
+      }));
+  }, [data]);
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Comparativo de Desempenho por Categoria</CardTitle>
-        <CardDescription>Comparação de métricas chave ao longo de diferentes trimestres.</CardDescription>
       </CardHeader>
-      <CardContent>
-        <ChartContainer config={chartConfig}>
-          <BarChart
-            accessibilityLayer
-            data={allChartData}
-            margin={{
-              left: 0,
-              right: 5,
-            }}
-          >
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="category"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-            />
-            <YAxis
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              tickFormatter={(value) => `${value}%`}
-            />
-            <ChartTooltip
-              cursor={false}
-              content={<ChartTooltipContent valueFormatter={(value) => `${value}%`} />}
-            />
-            <Legend />
-            <Bar dataKey="q1" fill="#2B7FFF" />
-            <Bar dataKey="q2" fill="#5790e5" />
-            <Bar dataKey="q3" fill="#0A4DB2" />
-          </BarChart>
-        </ChartContainer>
+      <CardContent className="min-h-[250px] flex items-center justify-center">
+        {chartData.length > 0 ? (
+          <ChartContainer config={chartConfig} className="w-full">
+            <BarChart
+              data={chartData}
+              margin={{ left: 0, right: 5 }}
+            >
+              <CartesianGrid vertical={false} />
+              <XAxis dataKey="category" tickLine={false} axisLine={false} tickMargin={8} />
+              <YAxis tickLine={false} axisLine={false} tickMargin={8} domain={[0, 10]} />
+              <ChartTooltip cursor={false} content={<ChartTooltipContent valueFormatter={(value) => `${value}/10`} />} />
+              <Legend />
+              <Bar dataKey="media" fill="#2B7FFF" />
+            </BarChart>
+          </ChartContainer>
+        ) : (
+          <p className="text-sm text-muted-foreground">Nenhum dado disponível.</p>
+        )}
       </CardContent>
     </Card>
   );
