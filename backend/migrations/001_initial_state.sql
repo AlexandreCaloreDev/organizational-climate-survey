@@ -7,6 +7,15 @@
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.6
 
+DROP TABLE IF EXISTS public.dashboard CASCADE;
+DROP TABLE IF EXISTS public.resposta CASCADE;
+DROP TABLE IF EXISTS public.pergunta CASCADE;
+DROP TABLE IF EXISTS public.pesquisa CASCADE;
+DROP TABLE IF EXISTS public.log_auditoria CASCADE;
+DROP TABLE IF EXISTS public.usuario_administrador CASCADE;
+DROP TABLE IF EXISTS public.setor CASCADE;
+DROP TABLE IF EXISTS public.empresa CASCADE;
+
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
