@@ -10,7 +10,7 @@
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
-SET transaction_timeout = 0;
+
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -36,7 +36,7 @@ CREATE TABLE public.dashboard (
 );
 
 
-ALTER TABLE public.dashboard OWNER TO postgres;
+ALTER TABLE public.dashboard OWNER TO clima_user;
 
 --
 -- Name: TABLE dashboard; Type: COMMENT; Schema: public; Owner: postgres
@@ -58,7 +58,7 @@ CREATE SEQUENCE public.dashboard_id_dashboard_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.dashboard_id_dashboard_seq OWNER TO postgres;
+ALTER SEQUENCE public.dashboard_id_dashboard_seq OWNER TO clima_user;
 
 --
 -- Name: dashboard_id_dashboard_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
@@ -81,7 +81,7 @@ CREATE TABLE public.empresa (
 );
 
 
-ALTER TABLE public.empresa OWNER TO postgres;
+ALTER TABLE public.empresa OWNER TO clima_user;
 
 --
 -- Name: TABLE empresa; Type: COMMENT; Schema: public; Owner: postgres
@@ -103,7 +103,7 @@ CREATE SEQUENCE public.empresa_id_empresa_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.empresa_id_empresa_seq OWNER TO postgres;
+ALTER SEQUENCE public.empresa_id_empresa_seq OWNER TO clima_user;
 
 --
 -- Name: empresa_id_empresa_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
@@ -126,7 +126,7 @@ CREATE TABLE public.log_auditoria (
 );
 
 
-ALTER TABLE public.log_auditoria OWNER TO postgres;
+ALTER TABLE public.log_auditoria OWNER TO clima_user;
 
 --
 -- Name: TABLE log_auditoria; Type: COMMENT; Schema: public; Owner: postgres
@@ -148,7 +148,7 @@ CREATE SEQUENCE public.log_auditoria_id_log_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.log_auditoria_id_log_seq OWNER TO postgres;
+ALTER SEQUENCE public.log_auditoria_id_log_seq OWNER TO clima_user;
 
 --
 -- Name: log_auditoria_id_log_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
@@ -173,7 +173,7 @@ CREATE TABLE public.pergunta (
 );
 
 
-ALTER TABLE public.pergunta OWNER TO postgres;
+ALTER TABLE public.pergunta OWNER TO clima_user;
 
 --
 -- Name: TABLE pergunta; Type: COMMENT; Schema: public; Owner: postgres
@@ -195,7 +195,7 @@ CREATE SEQUENCE public.pergunta_id_pergunta_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.pergunta_id_pergunta_seq OWNER TO postgres;
+ALTER SEQUENCE public.pergunta_id_pergunta_seq OWNER TO clima_user;
 
 --
 -- Name: pergunta_id_pergunta_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
@@ -228,7 +228,7 @@ CREATE TABLE public.pesquisa (
 );
 
 
-ALTER TABLE public.pesquisa OWNER TO postgres;
+ALTER TABLE public.pesquisa OWNER TO clima_user;
 
 --
 -- Name: TABLE pesquisa; Type: COMMENT; Schema: public; Owner: postgres
@@ -250,7 +250,7 @@ CREATE SEQUENCE public.pesquisa_id_pesquisa_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.pesquisa_id_pesquisa_seq OWNER TO postgres;
+ALTER SEQUENCE public.pesquisa_id_pesquisa_seq OWNER TO clima_user;
 
 --
 -- Name: pesquisa_id_pesquisa_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
@@ -271,7 +271,7 @@ CREATE TABLE public.resposta (
 );
 
 
-ALTER TABLE public.resposta OWNER TO postgres;
+ALTER TABLE public.resposta OWNER TO clima_user;
 
 --
 -- Name: TABLE resposta; Type: COMMENT; Schema: public; Owner: postgres
@@ -293,7 +293,7 @@ CREATE SEQUENCE public.resposta_id_resposta_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.resposta_id_resposta_seq OWNER TO postgres;
+ALTER SEQUENCE public.resposta_id_resposta_seq OWNER TO clima_user;
 
 --
 -- Name: resposta_id_resposta_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
@@ -314,7 +314,7 @@ CREATE TABLE public.setor (
 );
 
 
-ALTER TABLE public.setor OWNER TO postgres;
+ALTER TABLE public.setor OWNER TO clima_user;
 
 --
 -- Name: TABLE setor; Type: COMMENT; Schema: public; Owner: postgres
@@ -336,7 +336,7 @@ CREATE SEQUENCE public.setor_id_setor_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.setor_id_setor_seq OWNER TO postgres;
+ALTER SEQUENCE public.setor_id_setor_seq OWNER TO clima_user;
 
 --
 -- Name: setor_id_setor_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
@@ -362,7 +362,7 @@ CREATE TABLE public.usuario_administrador (
 );
 
 
-ALTER TABLE public.usuario_administrador OWNER TO postgres;
+ALTER TABLE public.usuario_administrador OWNER TO clima_user;
 
 --
 -- Name: TABLE usuario_administrador; Type: COMMENT; Schema: public; Owner: postgres
@@ -384,7 +384,7 @@ CREATE SEQUENCE public.usuario_administrador_id_user_admin_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.usuario_administrador_id_user_admin_seq OWNER TO postgres;
+ALTER SEQUENCE public.usuario_administrador_id_user_admin_seq OWNER TO clima_user;
 
 --
 -- Name: usuario_administrador_id_user_admin_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres

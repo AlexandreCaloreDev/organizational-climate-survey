@@ -68,6 +68,13 @@ func main() {
 	defer db.Close()
 	log.Println("✅ Conexão com banco de dados estabelecida")
 
+	// Executa migrations automatizadas
+	err = postgres.RunMigrations(db.DB)
+	if err != nil {
+		log.Fatalf("Erro ao executar as migrations do banco de dados: %v", err)
+	}
+	log.Println("✅ Migrations de banco de dados executadas")
+
 	// Configura middlewares globais de seguranca/limites.
 	middleware.ConfigureSecurityMiddleware(cfg.App.FrontendURL, cfg.App.RequestBodyLimitBytes)
 
@@ -192,16 +199,13 @@ func main() {
 	// Inicializa servidor HTTP
 	server := &http.Server{
 		Addr:    ":" + cfg.App.Port,
-		Handler: router,
+		Handler: middleware.CORSMiddleware(router),
 	}
 
-	fmt.Printf("🚀 Servidor '%s' iniciado na porta %s em modo '%s'\n", cfg.App.Name, cfg.App.Port, cfg.App.Env)
+	fmt.Printf("🚀 Servidor iniciado na porta %s\n", cfg.App.Port)
 	fmt.Printf("🔗 API Base URL: http://localhost:%s/api/v1\n", cfg.App.Port)
 	fmt.Printf("📊 Health Check: http://localhost:%s/health\n", cfg.App.Port)
-	fmt.Printf("📘 Swagger UI: http://localhost:%s/swagger/index.html\n", cfg.App.Port)
-	if cfg.App.Env == "development" {
-		fmt.Printf("📚 Documentação: http://localhost:%s/docs/\n", cfg.App.Port)
-	}
+	fmt.Printf("📚 Documentação: http://localhost:%s/docs/\n", cfg.App.Port)
 
 	log.Fatal(server.ListenAndServe())
 }
