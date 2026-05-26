@@ -14,7 +14,7 @@ import (
 func RunMigrations(db *sql.DB) error {
 	// 1. Create schema_migrations table if not exists
 	_, err := db.Exec(`
-		CREATE TABLE IF NOT EXISTS schema_migrations (
+		CREATE TABLE IF NOT EXISTS public.schema_migrations (
 			id SERIAL PRIMARY KEY,
 			migration_name VARCHAR(255) NOT NULL UNIQUE,
 			executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -51,7 +51,7 @@ func RunMigrations(db *sql.DB) error {
 
 		// Check if already executed
 		var exists bool
-		err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE migration_name = $1)", name).Scan(&exists)
+		err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM public.schema_migrations WHERE migration_name = $1)", name).Scan(&exists)
 		if err != nil {
 			return fmt.Errorf("failed to check migration state for %s: %v", name, err)
 		}
@@ -81,7 +81,7 @@ func RunMigrations(db *sql.DB) error {
 		}
 
 		// Record migration
-		_, err = db.Exec("INSERT INTO schema_migrations (migration_name) VALUES ($1)", name)
+		_, err = db.Exec("INSERT INTO public.schema_migrations (migration_name) VALUES ($1)", name)
 		if err != nil {
 			return fmt.Errorf("failed to record migration %s: %v", name, err)
 		}
