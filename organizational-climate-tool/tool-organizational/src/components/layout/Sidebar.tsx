@@ -17,10 +17,6 @@ import LogoAtmos from "@/public/images/logoAtmos.svg";
 import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
 
-type SidebarProps = {
-  isOpen: boolean;
-};
-
 interface NavLink {
   href: string;
   label: string;
@@ -35,7 +31,7 @@ const navLinks: NavLink[] = [
   { href: "/configuracoes", label: "Configurações", icon: Settings },
 ];
 
-const Sidebar = ({ isOpen }: SidebarProps) => {
+const Sidebar = () => {
   const pathname = usePathname();
   const { logout } = useAuth();
 

@@ -56,8 +56,6 @@ export const dashboardService = {
           const perguntas = await apiGet<any[]>(`/pesquisas/${idPesquisa}/perguntas`);
           
           let respNaPesquisa = 0;
-          let somaMedias = 0;
-          let qtdMedias = 0;
           
           perguntas?.forEach(pergunta => {
             const qId = String(pergunta.id_pergunta);
@@ -91,8 +89,6 @@ export const dashboardService = {
             let media = undefined;
             if (pergunta.tipo_pergunta === 'EscalaNumerica' && respostasNestaPergunta > 0) {
               media = somaValores / respostasNestaPergunta;
-              somaMedias += media;
-              qtdMedias++;
               
               if (totalScaleAnswers > 0) {
                 const nps = ((promoters - detractors) / totalScaleAnswers) * 100;

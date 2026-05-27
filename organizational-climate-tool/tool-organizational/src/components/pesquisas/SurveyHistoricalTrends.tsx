@@ -19,8 +19,11 @@ export function SurveyHistoricalTrends({ surveyId, dateRange }: SurveyHistorical
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const startDate = dateRange?.from ? dateRange.from.toLocaleDateString('pt-BR') : 'Início';
-  const endDate = dateRange?.to ? dateRange.to.toLocaleDateString('pt-BR') : 'Fim';
+  const fromDate = useMemo(() => dateRange?.from || new Date(new Date().setMonth(new Date().getMonth() - 3)), [dateRange?.from]);
+  const toDate = useMemo(() => dateRange?.to || new Date(), [dateRange?.to]);
+
+  const startDate = useMemo(() => fromDate.toLocaleDateString('pt-BR'), [fromDate]);
+  const endDate = useMemo(() => toDate.toLocaleDateString('pt-BR'), [toDate]);
 
   const formatDate = (date: Date) => {
     return date.toISOString().split('T')[0];
@@ -28,14 +31,13 @@ export function SurveyHistoricalTrends({ surveyId, dateRange }: SurveyHistorical
 
   useEffect(() => {
     if (!surveyId) return;
-    if (!dateRange?.from || !dateRange?.to) return;
 
     const fetch = async () => {
       setLoading(true);
       setErrorMsg(null);
       try {
-        const startStr = formatDate(dateRange.from);
-        const endStr = formatDate(dateRange.to);
+        const startStr = formatDate(fromDate);
+        const endStr = formatDate(toDate);
         const data = await apiGet<Resposta[]>(
           `/pesquisas/${surveyId}/respostas/by-date?start_date=${startStr}&end_date=${endStr}`
         );
@@ -49,7 +51,7 @@ export function SurveyHistoricalTrends({ surveyId, dateRange }: SurveyHistorical
       }
     };
     fetch();
-  }, [surveyId, dateRange]);
+  }, [surveyId, dateRange, fromDate, toDate]);
 
   const chartData = useMemo(() => {
     const numericResponses = responses.filter((r) => {

@@ -28,7 +28,6 @@ export function SurveyResponseDetails({ surveyId }: SurveyResponseDetailsProps) 
         const start = new Date();
         start.setMonth(start.getMonth() - 3); // últimos 3 meses
         
-        if (!start || !end) return;
 
         const formatDate = (date: Date) => date.toISOString().split('T')[0];
         

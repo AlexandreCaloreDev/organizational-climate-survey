@@ -68,7 +68,6 @@ import { dashboardService } from "@/lib/services/dashboardService";
 import { setorService } from "@/lib/services/setorService";
 import {
   buildResultsFromPerguntas,
-  toDashboardChartData,
   calcNps,
   distToPercent,
   tipoExibeMedia,
@@ -101,7 +100,6 @@ import {
 
 const pieConfig = { valor: { label: "Respostas" } } satisfies ChartConfig;
 const barConfig = { media: { label: "Média", color: "#2B7FFF" } } satisfies ChartConfig;
-const radarConfig = { pct: { label: "Score %", color: "#2B7FFF" } } satisfies ChartConfig;
 
 function DeltaBadge({ delta, inverso }: { delta: number | null; inverso?: boolean }) {
   if (delta == null) {
@@ -256,26 +254,7 @@ function HeatmapCell({ pct }: { pct: number | null }) {
   return <TableCell className={`text-center ${bg}`}>{pct}%</TableCell>;
 }
 
-async function loadResultsForPesquisa(
-  pid: number,
-  pesquisaSvc: any,
-  dashboardSvc: any
-): Promise<SurveyResult[]> {
-  const pergs = await pesquisaSvc.listPerguntas(pid);
-  let st: Record<string, Record<string, number>> = {};
-  let dp: Record<string, any> = {};
-  try {
-    const dash = await dashboardSvc.getByPesquisa(pid);
-    if (dash?.id_dashboard) {
-      const dd = await dashboardSvc.getData(dash.id_dashboard);
-      dp = (dd as any)?.dados_processados || {};
-      Object.entries(dp).forEach(([k, v]: [string, any]) => {
-        st[k.replace("pergunta_", "")] = v?.distribuicao || v?.dados || {};
-      });
-    }
-  } catch {}
-  return buildResultsFromPerguntas(pergs || [], st, dp);
-}
+
 
 const RelatorioPage = () => {
   const params = useParams();
@@ -285,11 +264,7 @@ const RelatorioPage = () => {
   const [survey, setSurvey] = useState<any>(null);
   const [setoresCadastro, setSetoresCadastro] = useState<{ id_setor: number; nome_setor: string }[]>([]);
   const [tableResults, setTableResults] = useState<SurveyResult[]>([]);
-  const [dashboardChartData, setDashboardChartData] = useState<any>(null);
-  const [comparativoSetores, setComparativoSetores] = useState<{ setor: string; media: number }[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
-  const [loadingMsg, setLoadingMsg] = useState("Carregando pesquisa...");
-  const [kpisHistoricos, setKpisHistoricos] = useState<KpiSet | null>(null);
   const [eixosNR17, setEixosNR17] = useState<EixoNR17[]>([]);
   const [eixosPorSetor, setEixosPorSetor] = useState<{ setor: string; eixos: EixoNR17[] }[]>([]);
 
@@ -297,7 +272,6 @@ const RelatorioPage = () => {
     const load = async () => {
       if (!surveyId) return;
       setPageLoading(true);
-      setLoadingMsg("Carregando pesquisa atual...");
       const pid = Number(surveyId);
       try {
         const pesquisa = await pesquisaService.getById(pid);
@@ -311,16 +285,13 @@ const RelatorioPage = () => {
           } catch {}
         }
 
-        setLoadingMsg("Processando respostas da pesquisa...");
         const perguntas = (await pesquisaService.listPerguntas(pid)) || [];
         let stats: Record<string, Record<string, number>> = {};
         let dadosProc: Record<string, any> = {};
-        let total = 0;
         const dashboard = await dashboardService.getByPesquisa(pid);
         if (dashboard?.id_dashboard) {
           const dData = await dashboardService.getData(dashboard.id_dashboard);
           dadosProc = (dData as any)?.dados_processados || {};
-          total = Number((dData as any)?.total_respostas) || 0;
           Object.entries(dadosProc).forEach(([k, v]: [string, any]) => {
             stats[k.replace("pergunta_", "")] = v?.distribuicao || v?.dados || {};
           });
@@ -331,7 +302,6 @@ const RelatorioPage = () => {
         }
         const results = buildResultsFromPerguntas(perguntas, stats, dadosProc);
         setTableResults(results);
-        setDashboardChartData(toDashboardChartData(results, total));
 
         const eixos = agruparEixosNR17(results);
         setEixosNR17(eixos);
@@ -374,15 +344,7 @@ const RelatorioPage = () => {
     return Math.min(100, Math.round((pessoasResponderam / alvo) * 100));
   }, [survey, pessoasResponderam]);
 
-  const npsGeral = useMemo(() => {
-    const m: Record<string, number> = {};
-    escalas.forEach((e) =>
-      Object.entries(e.distribuicao || {}).forEach(([k, v]) => {
-        m[k] = (m[k] || 0) + Number(v);
-      })
-    );
-    return calcNps(m);
-  }, [escalas]);
+
 
   const kpis = useMemo(
     () => calcularKpis(mediaGeral, mediaGeralPct, taxaParticipacao),
@@ -390,8 +352,8 @@ const RelatorioPage = () => {
   );
 
   const deltas = useMemo(
-    () => calcularDeltasHistoricos(kpis, kpisHistoricos),
-    [kpis, kpisHistoricos]
+    () => calcularDeltasHistoricos(kpis, null),
+    [kpis]
   );
 
   const planos = useMemo(
