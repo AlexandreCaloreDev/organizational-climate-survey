@@ -8,9 +8,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import type { Pesquisa, Pergunta } from '@/lib/types';
 import { apiGet } from "@/lib/api";
 import { perguntaService } from "@/lib/services/perguntaService";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
@@ -156,7 +154,7 @@ export const SurveyQuestionsTab = ({ survey }: { survey?: any }) => {
         let statsMap: Record<string, Record<string, number>> = {};
         try {
           statsMap = await apiGet<Record<string, Record<string, number>>>(`/pesquisas/${surveyId}/respostas/stats`);
-        } catch (statsErr) {
+        } catch {
           // Pesquisas sem respostas retornam 500 — silenciamos e mostramos "0 respostas"
           console.warn("Stats indisponível para pesquisa", surveyId);
         }

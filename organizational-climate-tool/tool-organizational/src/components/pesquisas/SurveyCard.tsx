@@ -3,14 +3,12 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Eye, QrCode, Trash2, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -63,7 +61,7 @@ export const SurveyCard = ({
     if (!onChangeStatus) return;
     try {
       await onChangeStatus(id, newStatus);
-    } catch (error) {
+    } catch {
       toast.error("O servidor bloqueou esta transição de status. Lembre-se: Rascunho > Ativa > Concluída > Arquivada.");
     }
   };

@@ -56,7 +56,6 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
-  Loader2,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
@@ -86,14 +85,12 @@ import {
   getClassificacaoRisco,
   pctEscala,
   buildPlanosIntervencao,
-  buildComparativoSetores,
   agruparEixosNR17,
   calcularKpis,
   calcularDeltasHistoricos,
   calcularMediaGeralFromResults,
   identificarDimensaoDaPergunta,
   type KpiSet,
-  type DeltaKpi,
   type EixoNR17,
 } from "@/lib/relatorioAnalytics";
 import {

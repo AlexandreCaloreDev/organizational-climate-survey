@@ -119,7 +119,7 @@ export const dashboardService = {
           totalTaxa += participacao;
           countPesquisas++;
           
-        } catch (e) {
+        } catch {
           console.warn("Erro ao buscar stats da pesquisa", idPesquisa);
         }
       }

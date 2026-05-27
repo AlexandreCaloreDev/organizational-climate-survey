@@ -50,7 +50,7 @@ func (uc *SubmissaoPesquisaUseCase) GenerateAccessToken(
 	clientIP string,
 	fingerprint string,
 ) (string, time.Time, error) {
-	return uc.GenerateAccessTokenWithMetadata(ctx, pesquisaID, clientIP, fingerprint, "", "")
+	return uc.GenerateAccessTokenWithMetadata(ctx, pesquisaID, clientIP, fingerprint, "", "", false)
 }
 
 // GenerateAccessTokenWithMetadata gera token com sinais adicionais para heurística antifraude.
@@ -61,6 +61,7 @@ func (uc *SubmissaoPesquisaUseCase) GenerateAccessTokenWithMetadata(
 	fingerprint string,
 	userAgent string,
 	acceptLanguage string,
+	isKiosk bool,
 ) (string, time.Time, error) {
 	// Validar ID da pesquisa
 	if pesquisaID <= 0 {
@@ -101,24 +102,29 @@ func (uc *SubmissaoPesquisaUseCase) GenerateAccessTokenWithMetadata(
 		return "", time.Time{}, fmt.Errorf("erro ao verificar rate limit: %v", err)
 	}
 
-	if count >= uc.rateLimitMax {
+	limitMax := uc.rateLimitMax
+	if isKiosk {
+		limitMax = 500 // Limite relaxado para Totem/Kiosk corporativo
+	}
+
+	if count >= limitMax {
 		return "", time.Time{}, fmt.Errorf("limite de tentativas excedido. Tente novamente em 1 hora")
 	}
 
-	// Heurística anti-fraude: bloqueia quando 2 de 3 sinais coincidem em janela de 24h.
-	duplicateCount, err := uc.repo.CountByPesquisaAndSignals(
-		ctx,
-		pesquisaID,
-		ipHash,
-		userAgentHash,
-		acceptLanguageHash,
-		now.Add(-24*time.Hour),
-	)
-	if err != nil {
-		return "", time.Time{}, fmt.Errorf("erro ao verificar duplicidade: %v", err)
+	// Validar duplicidade por fingerprint se não for Kiosk/Totem
+	var fingerprintHash string
+	if fingerprint != "" {
+		fingerprintHash = uc.hashFingerprint(fingerprint)
 	}
-	if duplicateCount > 0 {
-		return "", time.Time{}, fmt.Errorf("Você já respondeu esta pesquisa.")
+
+	if !isKiosk && fingerprintHash != "" {
+		duplicateCount, err := uc.repo.CountByPesquisaAndFingerprintHash(ctx, pesquisaID, fingerprintHash, now.Add(-24*time.Hour))
+		if err != nil {
+			return "", time.Time{}, fmt.Errorf("erro ao verificar duplicidade: %v", err)
+		}
+		if duplicateCount > 0 {
+			return "", time.Time{}, fmt.Errorf("Você já respondeu esta pesquisa.")
+		}
 	}
 
 	// Gerar token criptograficamente seguro usando CryptoService
@@ -127,11 +133,6 @@ func (uc *SubmissaoPesquisaUseCase) GenerateAccessTokenWithMetadata(
 		return "", time.Time{}, fmt.Errorf("erro ao gerar token: %v", err)
 	}
 
-	// Gerar hash do fingerprint (opcional)
-	fingerprintHash := ""
-	if fingerprint != "" {
-		fingerprintHash = uc.hashFingerprint(fingerprint)
-	}
 	fingerprintComposto := uc.hashFingerprint(fmt.Sprintf("%s|%s|%s|%s", ipHash, userAgentHash, acceptLanguageHash, fingerprintHash))
 
 	// Calcular expiração

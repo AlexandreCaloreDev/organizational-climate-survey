@@ -6,13 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { CheckCircle2 } from "lucide-react";
 
 import { publicApiGet, publicApiPost } from "@/lib/api";
 import LGPDBanner from "@/components/ui/lgpd-banner";
@@ -36,7 +34,7 @@ function parseOptions(value: any): string[] {
     try {
       const parsed = JSON.parse(value);
       if (Array.isArray(parsed)) return parsed;
-    } catch (e) {
+    } catch {
       // fallback
     }
     return value.split(/\||,|;/).map((s) => s.trim()).filter(Boolean);

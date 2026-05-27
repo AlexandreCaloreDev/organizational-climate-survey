@@ -275,6 +275,31 @@ func (r *SubmissaoPesquisaRepository) CountByPesquisaAndSignals(
 	return count, nil
 }
 
+// CountByPesquisaAndFingerprintHash conta submissões completadas com o mesmo fingerprint
+func (r *SubmissaoPesquisaRepository) CountByPesquisaAndFingerprintHash(
+	ctx context.Context,
+	pesquisaID int,
+	fingerprintHash string,
+	since time.Time,
+) (int, error) {
+	query := `
+		SELECT COUNT(*)
+		FROM submissao_pesquisa
+		WHERE id_pesquisa = $1
+		AND fingerprint_hash = $2
+		AND status = 'completa'
+		AND data_criacao >= $3
+	`
+
+	var count int
+	err := r.db.QueryRowContext(ctx, query, pesquisaID, fingerprintHash, since).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("erro ao contar submissões por fingerprint: %w", err)
+	}
+
+	return count, nil
+}
+
 // DeleteExpired remove submissões expiradas
 // Job cron executa periodicamente para limpeza
 func (r *SubmissaoPesquisaRepository) DeleteExpired(ctx context.Context) (int, error) {

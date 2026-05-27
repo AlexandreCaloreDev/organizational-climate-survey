@@ -101,12 +101,12 @@ func TestSubmissaoUseCaseAdditionalFlows(t *testing.T) {
 	repo.CountByPesquisaAndIPHashFunc = func(ctx context.Context, pesquisaID int, ipHash string, since time.Time) (int, error) {
 		return 0, nil
 	}
-	repo.CountByPesquisaAndSignalsFunc = func(ctx context.Context, pesquisaID int, ipHash, userAgentHash, acceptLanguageHash string, since time.Time) (int, error) {
+	repo.CountByPesquisaAndFingerprintHashFunc = func(ctx context.Context, pesquisaID int, fingerprintHash string, since time.Time) (int, error) {
 		return 1, nil
 	}
 
 	uc := NewSubmissaoPesquisaUseCase(repo, pesquisaRepo, cryptoSvc, "salt")
-	if _, _, err := uc.GenerateAccessTokenWithMetadata(context.Background(), 1, "10.0.0.1", "fp", "ua", "pt-BR"); err == nil {
+	if _, _, err := uc.GenerateAccessTokenWithMetadata(context.Background(), 1, "10.0.0.1", "fp", "ua", "pt-BR", false); err == nil {
 		t.Fatal("expected duplicate submission protection error")
 	}
 

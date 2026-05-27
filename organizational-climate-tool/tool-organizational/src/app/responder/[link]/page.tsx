@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -10,12 +10,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Loader2, CheckCircle2 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { publicApiGet, publicApiPost } from "@/lib/api";
+
 export default function ResponderPesquisaPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const link = params.link as string;
   const router = useRouter();
+  const isKiosk = searchParams.get("kiosk") === "true";
 
   const [pesquisa, setPesquisa] = useState<any>(null);
   const [perguntas, setPerguntas] = useState<any[]>([]);
@@ -26,6 +28,10 @@ export default function ResponderPesquisaPage() {
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Estados específicos para o Modo Totem (Kiosk)
+  const [started, setStarted] = useState(false);
+  const [countdown, setCountdown] = useState(10);
 
   // Carrega pesquisa e perguntas
   useEffect(() => {
@@ -39,6 +45,13 @@ export default function ResponderPesquisaPage() {
 
         const pesquisaId = res.id_pesquisa || res.id;
 
+        // Validar se o usuário já respondeu localmente (apenas no modo individual)
+        if (!isKiosk && localStorage.getItem(`pesquisa_respondida_${pesquisaId}`) === "true") {
+          setHasAlreadyResponded(true);
+          setIsLoading(false);
+          return;
+        }
+
         // 2. Busca as perguntas da pesquisa (SEM JWT)
         if (res.perguntas && res.perguntas.length > 0) {
           setPerguntas(res.perguntas);
@@ -50,19 +63,25 @@ export default function ResponderPesquisaPage() {
             console.error("Erro ao buscar perguntas:", e);
           }
         }
-        try {
-          const tokenRes = await publicApiPost<{ token_acesso: string }>(`/pesquisas/${pesquisaId}/token`, {});
-          setTokenAcesso(tokenRes.token_acesso);
-        } catch (tokenErr: any) {
-          console.error("Erro ao gerar token de acesso na carga:", tokenErr);
-          const status = tokenErr?.response?.status;
-          const backendMsg = (tokenErr?.response?.data?.message || "").toLowerCase();
-          const msg = tokenErr.message || "";
-          
-          if (status === 409 || backendMsg.includes("já respondeu") || msg.toLowerCase().includes("já respondeu")) {
-            setHasAlreadyResponded(true);
-          } else {
-            setErrorMsg(tokenErr?.response?.data?.message || tokenErr.message || "Pesquisa não disponível.");
+
+        // No modo individual, gera o token na carga inicial da página
+        if (!isKiosk) {
+          try {
+            const tokenRes = await publicApiPost<{ token_acesso: string }>(`/pesquisas/${pesquisaId}/token`, {
+              kiosk: false
+            });
+            setTokenAcesso(tokenRes.token_acesso);
+          } catch (tokenErr: any) {
+            console.error("Erro ao gerar token de acesso na carga:", tokenErr);
+            const status = tokenErr?.response?.status;
+            const backendMsg = (tokenErr?.response?.data?.message || "").toLowerCase();
+            const msg = tokenErr.message || "";
+            
+            if (status === 409 || backendMsg.includes("já respondeu") || msg.toLowerCase().includes("já respondeu")) {
+              setHasAlreadyResponded(true);
+            } else {
+              setErrorMsg(tokenErr?.response?.data?.message || tokenErr.message || "Pesquisa não disponível.");
+            }
           }
         }
 
@@ -74,7 +93,52 @@ export default function ResponderPesquisaPage() {
       }
     };
     fetchPesquisa();
-  }, [link]);
+  }, [link, isKiosk]);
+
+  // Função para iniciar pesquisa no Modo Totem
+  const handleStartSurvey = async () => {
+    try {
+      setIsLoading(true);
+      const pesquisaId = pesquisa.id_pesquisa || pesquisa.id;
+      const tokenRes = await publicApiPost<{ token_acesso: string }>(`/pesquisas/${pesquisaId}/token`, {
+        kiosk: true
+      });
+      setTokenAcesso(tokenRes.token_acesso);
+      setStarted(true);
+    } catch (tokenErr: any) {
+      console.error("Erro ao gerar token de acesso no Totem:", tokenErr);
+      const backendMsg = tokenErr?.response?.data?.message || "Não foi possível iniciar a pesquisa.";
+      toast.error(backendMsg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Função para reiniciar o Totem para o próximo colaborador
+  const handleResetKiosk = () => {
+    setRespostas({});
+    setTokenAcesso("");
+    setStarted(false);
+    setIsSuccess(false);
+    setCountdown(10);
+  };
+
+  // Efeito do temporizador do Totem (Kiosk)
+  useEffect(() => {
+    if (isSuccess && isKiosk) {
+      const timer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            handleResetKiosk();
+            return 10;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [isSuccess, isKiosk]);
 
   const handleRespostaChange = (perguntaId: number, valor: string | string[], tipo: string) => {
     setRespostas((prev) => ({
@@ -113,7 +177,9 @@ export default function ResponderPesquisaPage() {
       let token = tokenAcesso;
       if (!token) {
         const pesquisaId = pesquisa.id_pesquisa || pesquisa.id;
-        const tokenRes = await publicApiPost<{ token_acesso: string }>(`/pesquisas/${pesquisaId}/token`, {});
+        const tokenRes = await publicApiPost<{ token_acesso: string }>(`/pesquisas/${pesquisaId}/token`, {
+          kiosk: isKiosk
+        });
         token = tokenRes.token_acesso;
         setTokenAcesso(token);
       }
@@ -123,15 +189,11 @@ export default function ResponderPesquisaPage() {
         let val = respostas[p.id_pergunta];
         if (Array.isArray(val)) val = val.join(',');
 
-        
-
         return {
           id_pergunta: p.id_pergunta,
           valor_resposta: val != null ? String(val) : '',
         };
       });
-
-
 
       console.log("[DEBUG] Payload de respostas:", JSON.stringify(arrayRespostas, null, 2));
 
@@ -140,6 +202,12 @@ export default function ResponderPesquisaPage() {
         token_acesso: token,
         respostas: arrayRespostas,
       });
+
+      // Gravar no localStorage local se for link individual (evita re-submeter no mesmo aparelho)
+      if (!isKiosk) {
+        const pesquisaId = pesquisa.id_pesquisa || pesquisa.id;
+        localStorage.setItem(`pesquisa_respondida_${pesquisaId}`, "true");
+      }
 
       setIsSuccess(true);
       toast.success("Respostas enviadas com sucesso!");
@@ -186,10 +254,51 @@ export default function ResponderPesquisaPage() {
         <Card className="max-w-md w-full shadow-lg border-t-4 border-t-green-500">
           <CardContent className="pt-8 pb-6 flex flex-col items-center text-center">
             <CheckCircle2 className="h-16 w-16 text-green-500 mb-4" />
-            <CardTitle className="text-2xl text-gray-800 mb-2">Obrigado por participar!</CardTitle>
-            <CardDescription className="text-base">
+            <CardTitle className="text-2xl text-gray-800 mb-2">Obrigado por participar!.</CardTitle>
+            <CardDescription className="text-base mb-6">
               Suas respostas foram registradas com sucesso de forma anônima.
             </CardDescription>
+
+            {isKiosk && (
+              <div className="w-full border-t pt-4 flex flex-col items-center space-y-4">
+                <span className="text-sm text-muted-foreground flex items-center gap-1">
+                  ⏳ Esta tela será reiniciada em <strong className="text-foreground">{countdown}</strong> segundos...
+                </span>
+                <Button 
+                  onClick={handleResetKiosk} 
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                >
+                  Responder Novamente
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (isKiosk && !started) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <Card className="max-w-md w-full shadow-lg border-t-4 border-t-blue-600">
+          <CardHeader className="text-center pb-2">
+            <CardTitle className="text-3xl font-bold text-gray-900">{pesquisa.titulo}</CardTitle>
+            {pesquisa.descricao && (
+              <CardDescription className="text-base mt-2">{pesquisa.descricao}</CardDescription>
+            )}
+          </CardHeader>
+          <CardContent className="flex flex-col items-center pb-6">
+            <p className="text-sm text-muted-foreground text-center mb-6">
+              Esta é uma estação de pesquisa compartilhada (Totem). Suas respostas são totalmente anônimas e seguras de acordo com a LGPD.
+            </p>
+            <Button 
+              onClick={handleStartSurvey} 
+              size="lg" 
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white text-lg h-12 font-semibold shadow-md"
+            >
+              Iniciar Pesquisa
+            </Button>
           </CardContent>
         </Card>
       </div>

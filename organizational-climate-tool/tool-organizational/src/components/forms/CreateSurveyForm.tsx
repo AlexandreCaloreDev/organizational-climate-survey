@@ -88,7 +88,12 @@ export function CreateSurveyForm({ onClose }: CreateSurveyFormProps) {
     const empresaId = user?.empresa_id ? Number(user.empresa_id) : 1;
     setorService
       .listByEmpresa(empresaId)
-      .then((data) => setSetores(data))
+      .then((data) => {
+        setSetores(data);
+        if (data.length === 1) {
+          form.setValue("setorId", String(data[0].id_setor), { shouldValidate: true });
+        }
+      })
       .catch(() => toast.error("Não foi possível carregar os setores."))
       .finally(() => setIsLoadingSetores(false));
   }, [user]);
@@ -96,7 +101,7 @@ export function CreateSurveyForm({ onClose }: CreateSurveyFormProps) {
   const onSubmit = async (data: SurveyFormData) => {
     const empresaId = user?.empresa_id ? Number(user.empresa_id) : 1;
     let pesquisaCriadaId: number | null = null;
-    
+
     try {
       const pesquisa = await pesquisaService.create(empresaId, {
         titulo: data.title,
@@ -165,7 +170,7 @@ export function CreateSurveyForm({ onClose }: CreateSurveyFormProps) {
         ) : (
           <Select
             onValueChange={(value) => form.setValue("setorId", value, { shouldValidate: true })}
-            defaultValue={setores.length === 1 ? String(setores[0].id_setor) : form.watch("setorId")}
+            value={form.watch("setorId")}
           >
             <SelectTrigger>
               <SelectValue placeholder="Selecione o setor" />

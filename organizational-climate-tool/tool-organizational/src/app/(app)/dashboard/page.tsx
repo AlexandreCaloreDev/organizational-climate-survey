@@ -17,7 +17,7 @@ import { pesquisaService } from "@/lib/services/pesquisaService";
 import { dashboardService } from "@/lib/services/dashboardService";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
-import { Inbox, FilePlus2, NotebookText } from "lucide-react";
+import { Inbox, FilePlus2 } from "lucide-react";
 
 const DashboardPage = () => {
   const { user } = useAuth();

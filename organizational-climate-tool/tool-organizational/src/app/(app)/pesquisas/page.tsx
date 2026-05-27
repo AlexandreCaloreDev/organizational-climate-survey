@@ -184,11 +184,6 @@ const PesquisasPage = () => {
           {selectedSurvey && (
             <SurveyDetailsModal
               survey={selectedSurvey as any}
-              description={selectedSurvey.descricao}
-              tag={selectedSurvey.status}
-              creationDate={new Date(
-                selectedSurvey.data_criacao,
-              ).toLocaleDateString("pt-BR")}
             />
           )}
         </DialogContent>

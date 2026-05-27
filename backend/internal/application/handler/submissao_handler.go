@@ -72,6 +72,7 @@ func (h *SubmissaoHandler) GenerateAccessToken(w http.ResponseWriter, r *http.Re
 		req.Fingerprint,
 		r.UserAgent(),
 		r.Header.Get("Accept-Language"),
+		req.Kiosk,
 	)
 
 	if err != nil {

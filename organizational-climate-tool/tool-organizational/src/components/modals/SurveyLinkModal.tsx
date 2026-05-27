@@ -17,6 +17,7 @@ interface SurveyLinkModalProps {
 
 export function SurveyLinkModal({ isOpen, onClose, surveyId }: SurveyLinkModalProps) {
   const [surveyLink, setSurveyLink] = useState("");
+  const [activeTab, setActiveTab] = useState<"individual" | "totem">("individual");
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Gera o link apenas no cliente
@@ -26,19 +27,18 @@ export function SurveyLinkModal({ isOpen, onClose, surveyId }: SurveyLinkModalPr
     }
   }, [surveyId]);
 
+  const finalLink = activeTab === "totem" ? `${surveyLink}?kiosk=true` : surveyLink;
+
   const copyToClipboard = () => {
-    // Método 1: Usando navigator.clipboard (moderno)
     if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(surveyLink)
+      navigator.clipboard.writeText(finalLink)
         .then(() => {
           toast.success("Link copiado com sucesso!");
         })
         .catch(() => {
-          // Fallback para o método antigo
           fallbackCopy();
         });
     } else {
-      // Método 2: Fallback para navegadores mais antigos ou HTTP
       fallbackCopy();
     }
   };
@@ -63,20 +63,46 @@ export function SurveyLinkModal({ isOpen, onClose, surveyId }: SurveyLinkModalPr
         <DialogHeader>
           <DialogTitle>Link da Pesquisa</DialogTitle>
           <DialogDescription>
-            Compartilhe este link para que os participantes possam responder à pesquisa.
+            Escolha o modelo de link e compartilhe para receber as respostas dos participantes.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
+
+        <div className="flex border-b mb-2 mt-2">
+          <button
+            type="button"
+            className={`flex-1 pb-2 text-sm font-semibold border-b-2 transition-colors ${
+              activeTab === "individual"
+                ? "border-blue-600 text-blue-600"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+            onClick={() => setActiveTab("individual")}
+          >
+            Link Individual
+          </button>
+          <button
+            type="button"
+            className={`flex-1 pb-2 text-sm font-semibold border-b-2 transition-colors ${
+              activeTab === "totem"
+                ? "border-blue-600 text-blue-600"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+            onClick={() => setActiveTab("totem")}
+          >
+            Modo Totem
+          </button>
+        </div>
+
+        <div className="grid gap-4 py-2">
           <div className="grid gap-2">
-            <Label htmlFor="survey-link">Link</Label>
+            <Label htmlFor="survey-link">Link da Pesquisa</Label>
             <div className="flex space-x-2">
               <Input 
                 ref={inputRef}
                 id="survey-link" 
-                value={surveyLink} 
+                value={finalLink} 
                 readOnly 
               />
-              <Button type="button" size="icon" onClick={() => window.open(surveyLink, '_blank')} title="Abrir em Nova Aba">
+              <Button type="button" size="icon" onClick={() => window.open(finalLink, '_blank')} title="Abrir em Nova Aba">
                 <ExternalLink className="h-4 w-4" />
                 <span className="sr-only">Abrir Link</span>
               </Button>
@@ -85,11 +111,16 @@ export function SurveyLinkModal({ isOpen, onClose, surveyId }: SurveyLinkModalPr
                 <span className="sr-only">Copiar</span>
               </Button>
             </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {activeTab === "totem" 
+                ? "💡 Recomendado para computador compartilhado. A tela reinicia a cada 10s automaticamente após responder." 
+                : "💡 Recomendado para celulares pessoais. Limita tecnicamente para uma única resposta por celular."}
+            </p>
           </div>
-          {surveyLink && (
+          {finalLink && (
             <div className="flex flex-col items-center justify-center p-4 border rounded-md">
               <Label className="mb-2">QR Code</Label>
-              <QRCode value={surveyLink} size={180} level="H" />
+              <QRCode value={finalLink} size={180} level="H" />
               <p className="text-sm text-muted-foreground mt-2">Escaneie para responder</p>
             </div>
           )}

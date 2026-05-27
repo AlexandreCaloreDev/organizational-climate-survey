@@ -499,9 +499,10 @@ type MockSubmissaoPesquisaRepository struct {
 	GetByIDFunc                   func(context.Context, int) (*entity.SubmissaoPesquisa, error)
 	UpdateStatusFunc              func(context.Context, int, string) error
 	MarkAsCompletedFunc           func(context.Context, int) error
-	CountByPesquisaAndIPHashFunc  func(context.Context, int, string, time.Time) (int, error)
-	CountByPesquisaAndSignalsFunc func(context.Context, int, string, string, string, time.Time) (int, error)
-	DeleteExpiredFunc             func(context.Context) (int, error)
+	CountByPesquisaAndIPHashFunc          func(context.Context, int, string, time.Time) (int, error)
+	CountByPesquisaAndSignalsFunc         func(context.Context, int, string, string, string, time.Time) (int, error)
+	CountByPesquisaAndFingerprintHashFunc func(context.Context, int, string, time.Time) (int, error)
+	DeleteExpiredFunc                     func(context.Context) (int, error)
 	ListByPesquisaFunc            func(context.Context, int) ([]*entity.SubmissaoPesquisa, error)
 	CountCompleteByPesquisaFunc   func(context.Context, int) (int, error)
 	AnonymizePersonalDataFunc     func(context.Context, int, string) error
@@ -546,6 +547,12 @@ func (m *MockSubmissaoPesquisaRepository) CountByPesquisaAndIPHash(ctx context.C
 func (m *MockSubmissaoPesquisaRepository) CountByPesquisaAndSignals(ctx context.Context, pesquisaID int, ipHash, userAgentHash, acceptLanguageHash string, since time.Time) (int, error) {
 	if m.CountByPesquisaAndSignalsFunc != nil {
 		return m.CountByPesquisaAndSignalsFunc(ctx, pesquisaID, ipHash, userAgentHash, acceptLanguageHash, since)
+	}
+	return 0, nil
+}
+func (m *MockSubmissaoPesquisaRepository) CountByPesquisaAndFingerprintHash(ctx context.Context, pesquisaID int, fingerprintHash string, since time.Time) (int, error) {
+	if m.CountByPesquisaAndFingerprintHashFunc != nil {
+		return m.CountByPesquisaAndFingerprintHashFunc(ctx, pesquisaID, fingerprintHash, since)
 	}
 	return 0, nil
 }

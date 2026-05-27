@@ -153,6 +153,7 @@ type SubmissaoPesquisaRepository interface {
 	MarkAsCompleted(ctx context.Context, id int) error
 	CountByPesquisaAndIPHash(ctx context.Context, pesquisaID int, ipHash string, since time.Time) (int, error)
 	CountByPesquisaAndSignals(ctx context.Context, pesquisaID int, ipHash, userAgentHash, acceptLanguageHash string, since time.Time) (int, error)
+	CountByPesquisaAndFingerprintHash(ctx context.Context, pesquisaID int, fingerprintHash string, since time.Time) (int, error)
 	DeleteExpired(ctx context.Context) (int, error)
 	ListByPesquisa(ctx context.Context, pesquisaID int) ([]*entity.SubmissaoPesquisa, error)
 	CountCompleteByPesquisa(ctx context.Context, pesquisaID int) (int, error)

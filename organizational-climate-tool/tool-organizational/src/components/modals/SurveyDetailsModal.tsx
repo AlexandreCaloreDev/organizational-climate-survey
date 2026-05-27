@@ -9,18 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { type Pesquisa } from "@/components/dashboard/DataTable";
 import { SurveyOverviewTab } from "../pesquisas/SurveyOverviewTab";
 import { SurveyQuestionsTab } from "../pesquisas/SurveyQuestionsTab";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-
 type SurveyDetailsModalProps = {
-  description: string;
-  tag: string;
-  creationDate: string;
   survey: Pesquisa;
 };
 

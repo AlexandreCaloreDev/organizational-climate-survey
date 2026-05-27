@@ -1,11 +1,9 @@
 "use client";
 import React, { Suspense, useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -16,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {  ListFilter, Filter, ArrowDownToLine } from "lucide-react";
+import {  ListFilter } from "lucide-react";
 import { ResultsDataTable, SurveyResult } from "@/components/dashboard/ResultsDataTable";
 import { ExportReportButton } from "@/components/ui/export-report-button";
 

@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ListChecks } from "lucide-react";
 import type { Resposta } from '@/lib/types';
-import { respostaService } from '@/lib/services/respostaService';
 import { apiGet } from '@/lib/api';
 import { toast } from 'sonner';
 

@@ -115,11 +115,11 @@ func (r *RespostaRepository) GetByID(ctx context.Context, id int) (*entity.Respo
 	return resposta, nil
 }
 
-// CountByPesquisa conta o total de respostas de uma pesquisa
+// CountByPesquisa conta o total de respondentes únicos (participantes) de uma pesquisa
 func (r *RespostaRepository) CountByPesquisa(ctx context.Context, pesquisaID int) (int, error) {
 	var count int
 	query := `
-		SELECT COUNT(*) 
+		SELECT COUNT(DISTINCT r.id_submissao) 
 		FROM resposta r
 		INNER JOIN pergunta p ON r.id_pergunta = p.id_pergunta
 		WHERE p.id_pesquisa = $1
