@@ -24,7 +24,7 @@ export function InfoContext() {
             <li><strong>Concluída:</strong> Finalizada. Estatísticas consolidadas.</li>
             <li><strong>Arquivada:</strong> Removida da visualização principal. Histórica.</li>
           </ol>
-          <p className="font-medium text-red-600">Atenção: A transição segue apenas a ordem: Rascunho &gt; Ativa &gt; Concluída &gt; Arquivada. O servidor não permite voltar de status.</p>
+          <p className="font-medium text-red-600">Atenção: A transição segue apenas a ordem: Rascunho &gt; Ativa &gt; Concluída &gt; Arquivada. O sistema não permite voltar de status.</p>
         </div>
       </PopoverContent>
     </Popover>

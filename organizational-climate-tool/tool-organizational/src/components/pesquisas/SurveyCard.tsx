@@ -62,7 +62,7 @@ export const SurveyCard = ({
     try {
       await onChangeStatus(id, newStatus);
     } catch {
-      toast.error("O servidor bloqueou esta transição de status. Lembre-se: Rascunho > Ativa > Concluída > Arquivada.");
+      toast.error("Não foi possível alterar o status. Lembre-se da ordem: Rascunho > Ativa > Concluída > Arquivada.");
     }
   };
 
@@ -178,7 +178,7 @@ export const SurveyCard = ({
           <DialogHeader>
             <DialogTitle>Confirmar alteração de status</DialogTitle>
             <DialogDescription>
-              Deseja avançar a pesquisa para {nextStatus}? O backend aplica regras rígidas e você não poderá retroceder.
+              Deseja avançar a pesquisa para {nextStatus}? O sistema aplica regras rígidas de fluxo e você não poderá retroceder.
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center space-x-2 my-4">

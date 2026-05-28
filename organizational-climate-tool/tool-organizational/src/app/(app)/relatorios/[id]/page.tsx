@@ -27,12 +27,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Table,
   TableBody,
   TableCell,
@@ -47,10 +41,6 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import {
-  ChevronDown,
-  Copy,
-  Download,
-  FileCode,
   FileText,
   Printer,
   TrendingUp,
@@ -94,7 +84,6 @@ import {
 } from "@/lib/relatorioAnalytics";
 import {
   ResultsDataTable,
-  exportResultsToCSV,
   type SurveyResult,
 } from "@/components/dashboard/ResultsDataTable";
 
@@ -388,40 +377,7 @@ const RelatorioPage = () => {
     return d.toLocaleDateString("pt-BR");
   }, [survey]);
 
-  const handleCopy = () => {
-    const txt = [
-      `LAUDO NR17 — ${survey?.titulo}`,
-      `Empresa Avaliada: ${contexto.empresaAvaliada || "—"}`,
-      `Setores: ${contexto.setoresList.join(", ") || "—"}`,
-      `Pessoas que responderam: ${pessoasResponderam}`,
-      `Satisfação: ${kpis.satisfacao ?? "—"}% | Turnover est.: ${kpis.turnover ?? "—"}%`,
-      "",
-      "EIXOS NR17",
-      ...eixosNR17.map((e) => `${e.nome}: ${e.pct}% (${e.classificacao.status})`),
-      "",
-      "PLANOS 5W2H",
-      ...planos.map(
-        (p) =>
-          `[${p.status}] ${p.dimensao}\nO que: ${p.oQue}\nPor que: ${p.porQue}\nOnde: ${p.onde}\nQuando: ${p.quando}\nQuem: ${p.quem}\nComo: ${p.como}\nQuanto: ${p.quanto}`
-      ),
-    ].join("\n");
-    navigator.clipboard.writeText(txt).then(() =>
-      toast.success("Copiado com sucesso! Prontinho para colar no Word ou Google Docs.")
-    );
-  };
 
-  const handleHtml = () => {
-    const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>Laudo ${surveyId}</title>
-<style>body{font-family:system-ui,sans-serif;padding:24px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccc;padding:8px}</style></head><body>
-<h1>${survey?.titulo}</h1><p>Empresa: ${contexto.empresaAvaliada || "—"}</p><p>Setores: ${contexto.setoresList.join(", ")}</p>
-<p>Pessoas: ${pessoasResponderam}</p></body></html>`;
-    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `laudo_offline_${surveyId}.html`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  };
 
   if (pageLoading) {
     return (
@@ -455,29 +411,9 @@ const RelatorioPage = () => {
             Análise Ergonômica Preliminar — Avaliação Cognitiva — NR17
           </p>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button>Exportar Laudo Técnico <ChevronDown className="ml-2 h-4 w-4" /></Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
-            <DropdownMenuItem onClick={() => window.print()}>
-              <Printer className="mr-2 h-4 w-4" /> PDF Técnico (impressão)
-              <InfoTooltip text="Laudo formatado via impressão/PDF do navegador." />
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => exportResultsToCSV(tableResults, `laudo_${surveyId}.csv`)}>
-              <Download className="mr-2 h-4 w-4" /> CSV Excel-Ready (UTF-8 BOM)
-              <InfoTooltip text="Tabela CSV com acentuação preservada para Excel." />
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleCopy}>
-              <Copy className="mr-2 h-4 w-4" /> Copiar Word/Docs
-              <InfoTooltip text="Copia resumo, matriz e planos 5W2H para área de transferência." />
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleHtml}>
-              <FileCode className="mr-2 h-4 w-4" /> HTML Offline
-              <InfoTooltip text="Arquivo HTML autônomo para abrir sem login." />
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Button onClick={() => window.print()} className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2">
+          <Printer className="h-4 w-4" /> Exportar Laudo Técnico (PDF)
+        </Button>
       </header>
 
       <Card className="mb-6 border-2 break-inside-avoid page-break-inside-avoid">
@@ -502,7 +438,7 @@ const RelatorioPage = () => {
             <span className="text-muted-foreground block">Pessoas que Responderam</span>
             <strong>{pessoasResponderam}</strong>
             <MetricHelpPopover title="Pessoas que responderam">
-              <p>Estimativa pelo maior volume de respostas em uma pergunta (proxy de submissões).</p>
+              <p>Estimativa com base no maior número de respostas obtido em uma única pergunta.</p>
             </MetricHelpPopover>
           </div>
           <div>
@@ -537,7 +473,7 @@ const RelatorioPage = () => {
             inverso: false,
             tip: (
               <>
-                <p>Média das perguntas de escala (0–10) convertida em %: (média ÷ 10) × 100.</p>
+                <p>Calculado com base na média das respostas de escala (0 a 10), convertida proporcionalmente em porcentagem.</p>
                 {mediaGeral != null && <p className="font-medium text-foreground">Média bruta: {mediaGeral.toFixed(1)}/10</p>}
               </>
             ),
@@ -547,21 +483,21 @@ const RelatorioPage = () => {
             val: kpis.turnover,
             delta: deltas.turnover,
             inverso: true,
-            tip: <p>Estimativa inversa: max(5, 100 − média×1,2). Quanto menor a satisfação, maior o risco de saída.</p>,
+            tip: <p>Indicador de risco: estima a probabilidade de desligamento voluntário de colaboradores. Quanto menor a satisfação geral, maior a tendência de rotatividade.</p>,
           },
           {
             label: "Presença (Absenteísmo est.)",
             val: kpis.presenca,
             delta: deltas.presenca,
             inverso: false,
-            tip: <p>Correlacionada à média de escala: min(100, média×10,5). Proxy de engajamento/assiduidade.</p>,
+            tip: <p>Estimativa de presença habitual e assiduidade dos colaboradores, calculada a partir dos níveis médios de satisfação e engajamento registrados.</p>,
           },
           {
             label: "Produtividade Esperada",
             val: kpis.produtividade,
             delta: deltas.produtividade,
             inverso: false,
-            tip: <p>Média entre satisfação % e taxa de participação quando ambos existem.</p>,
+            tip: <p>Desempenho projetado a partir da relação direta entre a satisfação média dos colaboradores e o nível de participação na pesquisa.</p>,
           },
         ] as const).map((k) => (
           <Card key={k.label}>
@@ -582,7 +518,7 @@ const RelatorioPage = () => {
           <CardTitle className="flex items-center">
             Indicadores NR17 — 7 Eixos Psicossociais
             <MetricHelpPopover title="Eixos NR17">
-              <p>Perguntas classificadas pela dimensão NR17. Atualmente via inferência textual (Regex). Quando o backend fornecer o campo <code>dimensao_nr17</code>, a classificação será nativa.</p>
+              <p>Indicadores divididos pelos eixos psicossociais da norma regulamentadora NR-17, avaliando o conforto, segurança e desempenho eficiente no ambiente de trabalho.</p>
             </MetricHelpPopover>
           </CardTitle>
         </CardHeader>
