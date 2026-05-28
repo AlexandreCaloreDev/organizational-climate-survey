@@ -16,7 +16,7 @@ import { useAuth } from "@/context/AuthContext";
 import { pesquisaService } from "@/lib/services/pesquisaService";
 import { perguntaService } from "@/lib/services/perguntaService";
 import { setorService } from "@/lib/services/setorService";
-import type { TipoPergunta, Setor } from "@/lib/types";
+import type { TipoPergunta, Setor, Pesquisa } from "@/lib/types";
 import { useEffect, useState } from "react";
 
 const tipoMap: Record<string, TipoPergunta> = {
@@ -66,6 +66,53 @@ export function CreateSurveyForm({ onClose }: CreateSurveyFormProps) {
   const { user } = useAuth();
   const [setores, setSetores] = useState<Setor[]>([]);
   const [isLoadingSetores, setIsLoadingSetores] = useState(true);
+  const [existingSurveys, setExistingSurveys] = useState<Pesquisa[]>([]);
+
+  const mapApiPerguntaToForm = (q: any): any => {
+    const isCheckbox = q.texto_pergunta.endsWith("\u200B");
+    const cleanText = q.texto_pergunta.replace(/\u200B/g, "");
+
+    let type: "text" | "radio" | "checkbox" | "scale" = "text";
+    if (q.tipo_pergunta === "RespostaAberta") {
+      type = "text";
+    } else if (q.tipo_pergunta === "EscalaNumerica") {
+      type = "scale";
+    } else if (q.tipo_pergunta === "MultiplaEscolha") {
+      type = isCheckbox ? "checkbox" : "radio";
+    } else if (q.tipo_pergunta === "SimNao") {
+      type = "radio";
+    }
+
+    const optionsRaw = q.opcoes_resposta ? q.opcoes_resposta.split(",") : [];
+    const options = optionsRaw.map((o: string) => ({ text: o.trim() }));
+
+    if (q.tipo_pergunta === "SimNao" && options.length === 0) {
+      options.push({ text: "Sim" }, { text: "Não" });
+    }
+
+    return {
+      text: cleanText,
+      type,
+      options,
+    };
+  };
+
+  const handleCopyQuestionsFromSurvey = async (surveyIdStr: string) => {
+    const surveyId = Number(surveyIdStr);
+    try {
+      const loader = toast.loading("Carregando perguntas da pesquisa selecionada...");
+      const fetchedQuestions = await pesquisaService.listPerguntas(surveyId);
+      if (fetchedQuestions && fetchedQuestions.length > 0) {
+        const formQuestions = fetchedQuestions.map(mapApiPerguntaToForm);
+        form.setValue("questions", formQuestions, { shouldValidate: true });
+        toast.success("Perguntas copiadas com sucesso!", { id: loader });
+      } else {
+        toast.error("Esta pesquisa não possui perguntas cadastradas.", { id: loader });
+      }
+    } catch {
+      toast.error("Erro ao carregar perguntas da pesquisa.");
+    }
+  };
 
   const form = useForm<SurveyFormData>({
     resolver: zodResolver(surveySchema),
@@ -96,6 +143,14 @@ export function CreateSurveyForm({ onClose }: CreateSurveyFormProps) {
       })
       .catch(() => toast.error("Não foi possível carregar os setores."))
       .finally(() => setIsLoadingSetores(false));
+
+    // Carregar pesquisas existentes para opção de cópia
+    pesquisaService
+      .listByEmpresa(empresaId)
+      .then((data) => {
+        setExistingSurveys(data);
+      })
+      .catch((err) => console.error("Erro ao carregar pesquisas para cópia:", err));
   }, [user]);
 
   const onSubmit = async (data: SurveyFormData) => {
@@ -159,6 +214,28 @@ export function CreateSurveyForm({ onClose }: CreateSurveyFormProps) {
         <Label htmlFor="description">Descrição (Opcional)</Label>
         <Textarea id="description" {...form.register("description")} />
       </div>
+
+      {/* Copiar Perguntas */}
+      {existingSurveys.length > 0 && (
+        <div className="grid gap-2 border p-3 rounded-lg bg-slate-50 border-slate-200">
+          <Label className="font-semibold text-sm text-blue-800 flex items-center gap-1">💡 Copiar Perguntas de Pesquisa Anterior</Label>
+          <Select
+            onValueChange={handleCopyQuestionsFromSurvey}
+          >
+            <SelectTrigger className="bg-white">
+              <SelectValue placeholder="Selecione uma pesquisa existente para copiar" />
+            </SelectTrigger>
+            <SelectContent>
+              {existingSurveys.map((p) => (
+                <SelectItem key={p.id_pesquisa} value={String(p.id_pesquisa)}>
+                  {p.titulo} ({new Date(p.data_criacao).toLocaleDateString("pt-BR")})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">Isso substituirá as perguntas atuais pelas da pesquisa selecionada.</p>
+        </div>
+      )}
 
       {/* Setor */}
       <div className="grid gap-2">
