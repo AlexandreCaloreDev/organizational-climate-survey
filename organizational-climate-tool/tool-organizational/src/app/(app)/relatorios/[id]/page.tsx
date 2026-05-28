@@ -723,27 +723,7 @@ const RelatorioPage = () => {
         </Card>
       )}
 
-      {comparativoSetores.length > 1 && (
-        <Card className="mb-6 break-inside-avoid page-break-inside-avoid">
-          <CardHeader>
-            <CardTitle>Comparativo entre Setores (mesma empresa)</CardTitle>
-            <CardDescription>
-              Pesquisas com prefixo &quot;{contexto.empresaAvaliada}&quot; no cadastro de setores
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={barConfig} className="h-[260px] w-full">
-              <BarChart data={comparativoSetores}>
-                <CartesianGrid vertical={false} />
-                <XAxis dataKey="setor" />
-                <YAxis domain={[0, 10]} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="media" fill="#0A4DB2" radius={4} />
-              </BarChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-      )}
+
 
       <div className="space-y-4 mb-8">
         <h2 className="text-xl font-semibold flex items-center gap-2">
