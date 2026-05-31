@@ -2,8 +2,6 @@ package postgres
 
 import (
 	"context"
-	"fmt"
-	"strconv"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"organizational-climate-survey/backend/internal/application/dto/response"
