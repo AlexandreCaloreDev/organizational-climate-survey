@@ -27,7 +27,7 @@ func (r *AnalyticsRepository) GetScoresGlobaisPorCiclo(ctx context.Context, idEm
 		JOIN pesquisa pesq ON p.id_pesquisa = pesq.id_pesquisa
 		JOIN submissao_pesquisa sp ON r.id_submissao = sp.id_submissao
 		WHERE pesq.id_empresa = $1 
-		  AND pesq.titulo ILIKE '%' || $2 || '%'
+		  AND ($2 = 'todos' OR pesq.titulo ILIKE '%' || $2 || '%')
 		  AND sp.status = 'completa'
 		  AND r.valor_resposta ~ '^[0-9\.]+$'
 		GROUP BY p.tipo_pergunta
@@ -66,7 +66,7 @@ func (r *AnalyticsRepository) GetRadarSetores(ctx context.Context, idEmpresa int
 		JOIN submissao_pesquisa sp ON r.id_submissao = sp.id_submissao
 		JOIN setor s ON pesq.id_setor = s.id_setor
 		WHERE pesq.id_empresa = $1 
-		  AND pesq.titulo ILIKE '%' || $2 || '%'
+		  AND ($2 = 'todos' OR pesq.titulo ILIKE '%' || $2 || '%')
 		  AND sp.status = 'completa'
 		  AND r.valor_resposta ~ '^[0-9\.]+$'
 		GROUP BY s.nome_setor, p.tipo_pergunta
@@ -111,7 +111,7 @@ func (r *AnalyticsRepository) GetHeatmapGlobal(ctx context.Context, idEmpresa in
 		JOIN submissao_pesquisa sp ON r.id_submissao = sp.id_submissao
 		JOIN setor s ON pesq.id_setor = s.id_setor
 		WHERE pesq.id_empresa = $1 
-		  AND pesq.titulo ILIKE '%' || $2 || '%'
+		  AND ($2 = 'todos' OR pesq.titulo ILIKE '%' || $2 || '%')
 		  AND sp.status = 'completa'
 		  AND r.valor_resposta ~ '^[0-9\.]+$'
 		GROUP BY s.nome_setor, p.tipo_pergunta
@@ -158,7 +158,7 @@ func (r *AnalyticsRepository) GetRiscosGlobais(ctx context.Context, idEmpresa in
 		JOIN pesquisa pesq ON p.id_pesquisa = pesq.id_pesquisa
 		JOIN submissao_pesquisa sp ON r.id_submissao = sp.id_submissao
 		WHERE pesq.id_empresa = $1 
-		  AND pesq.titulo ILIKE '%' || $2 || '%'
+		  AND ($2 = 'todos' OR pesq.titulo ILIKE '%' || $2 || '%')
 		  AND sp.status = 'completa'
 		  AND r.valor_resposta ~ '^[0-9\.]+$'
 		GROUP BY p.tipo_pergunta
@@ -193,7 +193,7 @@ func (r *AnalyticsRepository) GetScoresSetorPorCiclo(ctx context.Context, idEmpr
 		JOIN submissao_pesquisa sp ON r.id_submissao = sp.id_submissao
 		WHERE pesq.id_empresa = $1 
 		  AND pesq.id_setor = $2
-		  AND pesq.titulo ILIKE '%' || $3 || '%'
+		  AND ($3 = 'todos' OR pesq.titulo ILIKE '%' || $3 || '%')
 		  AND sp.status = 'completa'
 		  AND r.valor_resposta ~ '^[0-9\.]+$'
 		GROUP BY p.tipo_pergunta
@@ -264,6 +264,54 @@ func (r *AnalyticsRepository) GetHistoricoSetor(ctx context.Context, idEmpresa i
 	return result, nil
 }
 
+func (r *AnalyticsRepository) GetHistoricoEmpresaGlobal(ctx context.Context, idEmpresa int) ([]response.LineChartData, error) {
+	query := `
+		SELECT 
+			pesq.titulo AS ciclo,
+			p.tipo_pergunta AS categoria, 
+			AVG(CAST(r.valor_resposta AS FLOAT)) * 20 AS score
+		FROM resposta r
+		JOIN pergunta p ON r.id_pergunta = p.id_pergunta
+		JOIN pesquisa pesq ON p.id_pesquisa = pesq.id_pesquisa
+		JOIN submissao_pesquisa sp ON r.id_submissao = sp.id_submissao
+		WHERE pesq.id_empresa = $1 
+		  AND sp.status = 'completa'
+		  AND r.valor_resposta ~ '^[0-9\.]+$'
+		GROUP BY pesq.titulo, p.tipo_pergunta
+		ORDER BY pesq.titulo ASC
+	`
+	rows, err := r.db.Query(ctx, query, idEmpresa)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	evolucaoMap := make(map[string]response.LineChartData)
+	for rows.Next() {
+		var ciclo, categoria string
+		var score float64
+		if err := rows.Scan(&ciclo, &categoria, &score); err != nil {
+			return nil, err
+		}
+
+		lcd, exists := evolucaoMap[ciclo]
+		if !exists {
+			lcd = response.LineChartData{
+				Ciclo:     ciclo,
+				Dimensoes: make(map[string]float64),
+			}
+		}
+		lcd.Dimensoes[categoria] = score
+		evolucaoMap[ciclo] = lcd
+	}
+
+	var result []response.LineChartData
+	for _, v := range evolucaoMap {
+		result = append(result, v)
+	}
+	return result, nil
+}
+
 func (r *AnalyticsRepository) GetRiscosSetor(ctx context.Context, idEmpresa int, idSetor int, ciclo string) ([]response.ActionPlan, error) {
 	query := `
 		SELECT 
@@ -275,7 +323,7 @@ func (r *AnalyticsRepository) GetRiscosSetor(ctx context.Context, idEmpresa int,
 		JOIN submissao_pesquisa sp ON r.id_submissao = sp.id_submissao
 		WHERE pesq.id_empresa = $1 
 		  AND pesq.id_setor = $2
-		  AND pesq.titulo ILIKE '%' || $3 || '%'
+		  AND ($3 = 'todos' OR pesq.titulo ILIKE '%' || $3 || '%')
 		  AND sp.status = 'completa'
 		  AND r.valor_resposta ~ '^[0-9\.]+$'
 		GROUP BY p.tipo_pergunta

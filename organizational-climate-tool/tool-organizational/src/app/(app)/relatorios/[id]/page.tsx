@@ -404,16 +404,35 @@ const RelatorioPage = () => {
 
   return (
     <section className="container mx-auto px-4 py-10 bg-gray-50/50 print:p-12 print:bg-white">
-      <header className="mb-6 print:hidden flex justify-between gap-4">
+      <header className="mb-6 print:hidden flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
           <h1 className="text-2xl font-bold">{survey?.titulo}</h1>
           <p className="text-sm text-muted-foreground">
             Análise Ergonômica Preliminar — Avaliação Cognitiva — NR17
           </p>
         </div>
-        <Button onClick={() => window.print()} className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2">
-          <Printer className="h-4 w-4" /> Exportar Laudo Técnico (PDF)
-        </Button>
+        
+        <div className="flex items-center gap-4">
+          <div className="w-[200px]">
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Modo de Visualização</label>
+            <select 
+              className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              onChange={(e) => {
+                if (e.target.value === "todos") {
+                  window.location.href = "/resultados";
+                }
+              }}
+              defaultValue="especifico"
+            >
+              <option value="especifico">Este Relatório Isolado</option>
+              <option value="todos">Matriz Global (Todos os Períodos)</option>
+            </select>
+          </div>
+
+          <Button onClick={() => window.print()} className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 h-10 mt-5">
+            <Printer className="h-4 w-4" /> Exportar Laudo Técnico (PDF)
+          </Button>
+        </div>
       </header>
 
       <Card className="mb-6 border-2 break-inside-avoid page-break-inside-avoid">

@@ -225,7 +225,7 @@ func (uc *AnalyticsUseCase) GetTrendAnalysis(ctx context.Context, empresaID int,
 }
 
 // GetAnalyticsReport gera o relatório analítico principal (Cognitivo e Psicossocial),
-// centralizando a lógica de ramificação entre Cenário A e Cenário B conforme definido nas regras.
+// com 4 cenários baseados na matriz de filtros de Setor e Ciclo.
 func (uc *AnalyticsUseCase) GetAnalyticsReport(ctx context.Context, req response.AnalyticsFilterRequest) (*response.RelatorioAnalyticsResponse, error) {
 	var ciclo string
 	if req.Ciclo != nil {
@@ -234,8 +234,8 @@ func (uc *AnalyticsUseCase) GetAnalyticsReport(ctx context.Context, req response
 
 	resp := &response.RelatorioAnalyticsResponse{}
 
-	if req.IDSetor == nil {
-		// Cenário A: Visão Global (Todos os Setores)
+	if req.IDSetor == nil && ciclo != "todos" {
+		// Cenário 1: Visão Global (Setor: todos + Ciclo: Específico)
 		kpis, err := uc.repo.GetScoresGlobaisPorCiclo(ctx, req.IDEmpresa, ciclo)
 		if err != nil {
 			return nil, fmt.Errorf("erro ao obter kpis globais: %w", err)
@@ -246,8 +246,6 @@ func (uc *AnalyticsUseCase) GetAnalyticsReport(ctx context.Context, req response
 		if err != nil {
 			return nil, fmt.Errorf("erro ao obter dados do radar: %w", err)
 		}
-		// Radar agora é construído como slice de interfaces apontando para os mapas, pois definimos como []interface{}
-		// Para adequar ao tipo da resposta
 		radarInterfaces := make([]interface{}, len(radar))
 		for i, v := range radar {
 			radarInterfaces[i] = v
@@ -266,29 +264,35 @@ func (uc *AnalyticsUseCase) GetAnalyticsReport(ctx context.Context, req response
 		}
 		resp.PlanosDeAcao = planos
 
-		resp.Evolucao = nil
-	} else {
-		// Cenário B: Visão Isolada (Setor Específico)
-		kpis, err := uc.repo.GetScoresSetorPorCiclo(ctx, req.IDEmpresa, *req.IDSetor, ciclo)
+	} else if req.IDSetor == nil && ciclo == "todos" {
+		// Cenário 2: Visão Macro Histórica (Setor: todos + Ciclo: todos)
+		evolucao, err := uc.repo.GetHistoricoEmpresaGlobal(ctx, req.IDEmpresa)
 		if err != nil {
-			return nil, fmt.Errorf("erro ao obter kpis do setor: %w", err)
+			return nil, fmt.Errorf("erro ao obter histórico global da empresa: %w", err)
 		}
-		resp.KPIs = kpis
+		resp.Evolucao = evolucao
 
+	} else if req.IDSetor != nil && ciclo == "todos" {
+		// Cenário 3: Visão Micro Histórica (Setor: Específico + Ciclo: todos)
 		evolucao, err := uc.repo.GetHistoricoSetor(ctx, req.IDEmpresa, *req.IDSetor)
 		if err != nil {
 			return nil, fmt.Errorf("erro ao obter histórico do setor: %w", err)
 		}
 		resp.Evolucao = evolucao
 
+	} else {
+		// Cenário 4: Visão Isolada (Setor: Específico + Ciclo: Específico)
+		kpis, err := uc.repo.GetScoresSetorPorCiclo(ctx, req.IDEmpresa, *req.IDSetor, ciclo)
+		if err != nil {
+			return nil, fmt.Errorf("erro ao obter kpis do setor: %w", err)
+		}
+		resp.KPIs = kpis
+
 		planos, err := uc.repo.GetRiscosSetor(ctx, req.IDEmpresa, *req.IDSetor, ciclo)
 		if err != nil {
 			return nil, fmt.Errorf("erro ao obter planos de ação do setor: %w", err)
 		}
 		resp.PlanosDeAcao = planos
-
-		resp.Radar = nil
-		resp.Heatmap = nil
 	}
 
 	return resp, nil

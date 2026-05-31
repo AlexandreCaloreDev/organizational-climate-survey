@@ -152,6 +152,7 @@ type AnalyticsRepository interface {
 	GetRiscosGlobais(ctx context.Context, idEmpresa int, ciclo string) ([]response.ActionPlan, error)
 	GetScoresSetorPorCiclo(ctx context.Context, idEmpresa int, idSetor int, ciclo string) ([]response.AnalyticsKPI, error)
 	GetHistoricoSetor(ctx context.Context, idEmpresa int, idSetor int) ([]response.LineChartData, error)
+	GetHistoricoEmpresaGlobal(ctx context.Context, idEmpresa int) ([]response.LineChartData, error)
 	GetRiscosSetor(ctx context.Context, idEmpresa int, idSetor int, ciclo string) ([]response.ActionPlan, error)
 }
 

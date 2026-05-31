@@ -1,228 +1,221 @@
 "use client";
-import React, { Suspense, useState } from "react";
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {  ListFilter } from "lucide-react";
-import { ResultsDataTable, SurveyResult } from "@/components/dashboard/ResultsDataTable";
-import { ExportReportButton } from "@/components/ui/export-report-button";
+import React, { useState, useEffect } from "react";
+import { RadarComparativo } from "@/components/analytics/RadarComparativo";
+import { HeatmapGlobal } from "@/components/analytics/HeatmapGlobal";
+import { EvolucaoHistorica } from "@/components/analytics/EvolucaoHistorica";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TrendingUp, TrendingDown, Minus, AlertTriangle, Lightbulb } from "lucide-react";
+import { dashboardService } from "@/lib/services/dashboardService";
+import { setorService } from "@/lib/services/setorService";
+import { pesquisaService } from "@/lib/services/pesquisaService";
+import type { RelatorioAnalyticsResponse, Setor } from "@/lib/types";
 
-import type { Pesquisa as BackendPesquisa } from '@/lib/types';
-import { useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
-import { buildResultsFromPerguntas } from '@/lib/buildSurveyResults';
-import { pesquisaService } from '@/lib/services/pesquisaService';
-import { dashboardService } from '@/lib/services/dashboardService';
-import { respostaService } from '@/lib/services/respostaService';
-import { setorService } from '@/lib/services/setorService';
+export default function AnalyticsDashboardPage() {
+  const [cicloSelecionado, setCicloSelecionado] = useState<string>("todos");
+  const [setorSelecionado, setSetorSelecionado] = useState<string>("todos");
+  
+  const [dados, setDados] = useState<RelatorioAnalyticsResponse | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  
+  const [ciclosDisponiveis, setCiclosDisponiveis] = useState<string[]>([]);
+  const [setoresDisponiveis, setSetoresDisponiveis] = useState<Setor[]>([]);
 
-const ResultadosPage = () => {
-  const [selectedSurvey, setSelectedSurvey] = useState<string>("");
-  const [selectedDepartment, setSelectedDepartment] = useState<string>("todos");
-  const [displayResults, setDisplayResults] = useState<SurveyResult[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [pesquisas, setPesquisas] = useState<BackendPesquisa[]>([]);
-  const [setores, setSetores] = useState<any[]>([]);
-  const [isLoadingSetores, setIsLoadingSetores] = useState(true);
-
-  const { user } = useAuth();
-  const searchParams = useSearchParams();
-
+  // Carrega Filtros Dinâmicos
   useEffect(() => {
-    if (!user?.empresa_id) return;
-    const fetch = async () => {
+    const carregarFiltros = async () => {
       try {
-        const list = await pesquisaService.listByEmpresa(user.empresa_id);
-        setPesquisas(list || []);
+        const empresaId = 1; // ID da empresa mockado ou vindo de contexto de auth no futuro
+        const [setores, pesquisas] = await Promise.all([
+          setorService.listByEmpresa(empresaId),
+          pesquisaService.listByEmpresa(empresaId)
+        ]);
+        
+        setSetoresDisponiveis(setores || []);
+        
+        // Extrai títulos únicos (ciclos) das pesquisas
+        const ciclosUnicos = Array.from(new Set(pesquisas?.map(p => p.titulo).filter(Boolean)));
+        setCiclosDisponiveis(ciclosUnicos);
+        
+        // Se houver ciclos, seleciona o primeiro se o usuário não quiser todos por padrão
+        // Deixamos "todos" como padrão conforme a lógica do quadrante
       } catch (err) {
-        console.error(err);
+        console.error("Erro ao carregar filtros", err);
       }
     };
-    const fetchSetores = async () => {
-      try {
-        setIsLoadingSetores(true);
-        const list = await setorService.listByEmpresa(user.empresa_id);
-        setSetores(list || []);
-      } catch (err) {
-        console.error("Erro ao carregar setores:", err);
-      } finally {
-        setIsLoadingSetores(false);
-      }
-    };
-    fetch();
-    fetchSetores();
-  }, [user]);
+    carregarFiltros();
+  }, []);
 
   useEffect(() => {
-    const pid = searchParams.get("pesquisa");
-    if (!pid || !pesquisas.length) return;
-    setSelectedSurvey(pid);
-    applyFilters(pid, selectedDepartment);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, pesquisas]);
-
-  // Função centralizada que busca e filtra os dados
-  const applyFilters = (surveyId: string, department: string) => {
-    if (!surveyId) {
-      setDisplayResults([]);
-      return;
-    }
-
-    setIsLoading(true);
-    (async () => {
+    const fetchAnalytics = async () => {
+      setIsLoading(true);
       try {
-        const pid = Number(surveyId);
-        
-        // Sempre busca os detalhes da pesquisa (com as perguntas) para ter o texto e o tipo das perguntas
-        const surveyDetails = await pesquisaService.getById(pid);
-        
-        // Se o departamento for filtrado, verifica se a pesquisa pertence a este setor
-        if (department && department !== "todos") {
-          const selectedSetor = setores.find(s => s.nome_setor.toLowerCase() === department.toLowerCase());
-          if (selectedSetor && surveyDetails.id_setor !== selectedSetor.id_setor) {
-            setDisplayResults([]);
-            setIsLoading(false);
-            return;
-          }
-        }
-
-        const perguntas = (await pesquisaService.listPerguntas(pid)) || [];
-        let stats: Record<string, Record<string, number>> = {};
-        let dadosProc: Record<string, any> = {};
-
-        try {
-          const dashboard = await dashboardService.getByPesquisa(pid);
-          if (dashboard?.id_dashboard) {
-            const dashboardData = await dashboardService.getData(dashboard.id_dashboard);
-            dadosProc = (dashboardData as any)?.dados_processados || {};
-            Object.entries(dadosProc).forEach(([k, v]: [string, any]) => {
-              const qId = k.replace("pergunta_", "");
-              stats[qId] = v?.distribuicao || v?.dados || {};
-            });
-          }
-        } catch {
-          // fallback silencioso
-        }
-
-        if (Object.keys(stats).length === 0) {
-          try {
-            const rawStats = (await respostaService.getStatsByPesquisa(pid)) as Record<
-              string,
-              Record<string, number>
-            >;
-            Object.entries(rawStats || {}).forEach(([qId, dist]) => {
-              stats[qId] = dist || {};
-            });
-          } catch {
-            // fallback silencioso
-          }
-        }
-
-        setDisplayResults(buildResultsFromPerguntas(perguntas, stats, dadosProc));
-      } catch (err) {
-        console.error("Erro ao aplicar filtros nos resultados:", err);
-        setDisplayResults([]);
+        // Envia null se for "todos"
+        const cicloParam = cicloSelecionado === "todos" ? "todos" : cicloSelecionado;
+        const setorParam = setorSelecionado === "todos" ? null : setorSelecionado;
+        const data = await dashboardService.getAnalyticsReport(cicloParam, setorParam);
+        setDados(data);
+      } catch (error) {
+        console.error("Erro ao buscar analytics:", error);
       } finally {
         setIsLoading(false);
       }
-    })();
-  };
+    };
 
-  const handleSurveyChange = (surveyId: string) => {
-    setSelectedSurvey(surveyId);
-    applyFilters(surveyId, selectedDepartment);
-  };
-
-  const handleDepartmentChange = (department: string) => {
-    setSelectedDepartment(department);
-    // Aplica o filtro apenas se uma pesquisa já estiver selecionada
-    if (selectedSurvey) {
-      applyFilters(selectedSurvey, department);
-    }
-  };
+    fetchAnalytics();
+  }, [cicloSelecionado, setorSelecionado]);
 
   return (
-    <section className="container mx-auto px-4 mt-10">
-      <div className="flex items-center justify-between mb-8">
+    <div className="container mx-auto p-6 space-y-8 animate-in fade-in duration-500">
+      {/* Header & Filtros */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
         <div>
-          <h1 className="w-fit text-3xl font-bold tracking-tight bg-blue-600 text-white p-2 rounded-lg">
-            Resultados Detalhados
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Filtre e analise as respostas de cada pesquisa em detalhes.
-          </p>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Relatório Cognitivo e Comportamental</h1>
+          <p className="text-slate-500 mt-1">Análise aprofundada de riscos e dimensões organizacionais.</p>
         </div>
-        <ExportReportButton surveyId={selectedSurvey} />
-      </div>
-
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ListFilter className="h-5 w-5" />
-            Filtros de Análise
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col gap-4 md:flex-row">
-            <Select onValueChange={handleSurveyChange} value={selectedSurvey}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione a pesquisa" />
+        
+        <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+          <div className="w-full sm:w-[180px]">
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Ciclo de Avaliação</label>
+            <Select value={cicloSelecionado} onValueChange={setCicloSelecionado}>
+              <SelectTrigger className="bg-slate-50">
+                <SelectValue placeholder="Selecione o Ciclo" />
               </SelectTrigger>
               <SelectContent>
-                {pesquisas.map((pesquisa) => (
-                  <SelectItem key={pesquisa.id_pesquisa} value={String(pesquisa.id_pesquisa)}>
-                    {pesquisa.titulo}
-                  </SelectItem>
+                <SelectItem value="todos" className="font-semibold text-blue-600">Todos os Períodos</SelectItem>
+                {ciclosDisponiveis.map(c => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Select
-              onValueChange={handleDepartmentChange}
-              value={selectedDepartment}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Todos os setores" />
+          </div>
+
+          <div className="w-full sm:w-[220px]">
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Recorte por Setor</label>
+            <Select value={setorSelecionado} onValueChange={setSetorSelecionado}>
+              <SelectTrigger className="bg-slate-50">
+                <SelectValue placeholder="Selecione o Setor" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="todos">Todos os setores</SelectItem>
-                {isLoadingSetores ? (
-                  <SelectItem value="loading" disabled>Carregando setores...</SelectItem>
-                ) : setores.length > 0 ? (
-                  setores.map((setor) => (
-                    <SelectItem key={setor.id_setor} value={setor.nome_setor.toLowerCase()}>
-                      {setor.nome_setor}
-                    </SelectItem>
-                  ))
-                ) : (
-                  <SelectItem value="none" disabled>Nenhum setor encontrado</SelectItem>
-                )}
+                <SelectItem value="todos" className="font-semibold text-blue-600">Todos os Setores</SelectItem>
+                {setoresDisponiveis.map(s => (
+                  <SelectItem key={s.id_setor} value={s.id_setor!.toString()}>{s.nome_setor}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      <ResultsDataTable data={displayResults} isLoading={isLoading} />
-    </section>
-  );
-};
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center h-64 space-y-4">
+          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-slate-500 font-medium">Processando métricas analíticas...</p>
+        </div>
+      ) : dados ? (
+        <>
+          {/* Grid de KPIs - Renderizado apenas se vier da API (Cenários 1 e 4) */}
+          {dados.kpis && dados.kpis.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {dados.kpis.map((kpi, idx) => (
+                <Card key={idx} className="border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                  <CardContent className="p-6">
+                    <p className="text-sm font-medium text-slate-500 mb-2 truncate">{kpi.categoria}</p>
+                    <div className="flex items-end justify-between">
+                      <h3 className="text-3xl font-bold text-slate-900">{kpi.score.toFixed(1)}<span className="text-lg text-slate-400 font-medium ml-1">%</span></h3>
+                      
+                      <div className={`flex items-center gap-1 text-sm font-semibold ${
+                        kpi.delta_anterior > 0 ? "text-emerald-600" : kpi.delta_anterior < 0 ? "text-rose-600" : "text-slate-400"
+                      }`}>
+                        {kpi.delta_anterior > 0 ? <TrendingUp className="w-4 h-4" /> : kpi.delta_anterior < 0 ? <TrendingDown className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
+                        {Math.abs(kpi.delta_anterior)}%
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
 
-export default function ResultadosPageWrapper() {
-  return (
-    <Suspense fallback={<section className="container mx-auto px-4 mt-10">Carregando...</section>}>
-      <ResultadosPage />
-    </Suspense>
+          {/* Lógica da Matriz de 4 Quadrantes */}
+          {setorSelecionado === "todos" && cicloSelecionado !== "todos" && (
+            // CENÁRIO 1: Visão Global Atual (Setor: todos, Ciclo: específico)
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="col-span-1 border-slate-200 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-lg text-slate-800">Comparativo entre Setores</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <RadarComparativo data={dados.radar || []} />
+                </CardContent>
+              </Card>
+
+              <Card className="col-span-1 border-slate-200 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-lg text-slate-800">Matriz de Diagnóstico</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <HeatmapGlobal data={dados.heatmap || []} />
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {( (setorSelecionado === "todos" && cicloSelecionado === "todos") || 
+             (setorSelecionado !== "todos" && cicloSelecionado === "todos") ) && (
+            // CENÁRIO 2 e 3: Visão Histórica (Ciclo: todos)
+            <Card className="border-slate-200 shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-lg text-slate-800">
+                  {setorSelecionado === "todos" ? "Evolução Histórica da Empresa" : "Evolução Histórica do Setor"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <EvolucaoHistorica data={dados.evolucao || []} />
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Cenário 4 (Setor Específico e Ciclo Específico) não renderiza gráficos comparativos ou de evolução */}
+
+          {/* Planos de Ação e Alertas (Não renderiza nos cenários 2 e 3 se não vier na API) */}
+          {dados.planos_de_acao && dados.planos_de_acao.length > 0 && (
+            <div className="mt-10">
+              <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                <Lightbulb className="w-6 h-6 text-amber-500" />
+                Análise e Recomendações
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {dados.planos_de_acao.map((plano, idx) => (
+                  <div key={idx} className="flex flex-col p-5 bg-white border-l-4 border-l-rose-500 rounded-r-lg shadow-sm border border-slate-200">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+                      <div>
+                        <h4 className="font-bold text-slate-900 text-base">{plano.risco}</h4>
+                        {plano.setor && (
+                          <span className="inline-block mt-1 px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-semibold rounded-md">
+                            Foco: {plano.setor}
+                          </span>
+                        )}
+                        <p className="text-sm text-slate-600 mt-2 leading-relaxed">
+                          <span className="font-semibold text-slate-700">Ação Sugerida: </span>
+                          {plano.recomendacao}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="flex h-64 items-center justify-center text-slate-500 bg-slate-50 rounded-xl border border-slate-200">
+          Nenhum dado encontrado para os filtros selecionados.
+        </div>
+      )}
+    </div>
   );
 }
+
