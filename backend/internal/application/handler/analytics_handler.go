@@ -1,10 +1,10 @@
 package handler
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
 	"organizational-climate-survey/backend/internal/application/dto/response"
 	"organizational-climate-survey/backend/internal/domain/usecase"
 )
