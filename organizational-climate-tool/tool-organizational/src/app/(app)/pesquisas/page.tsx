@@ -41,6 +41,7 @@ const PesquisasPage = () => {
   const [selectedSurvey, setSelectedSurvey] = React.useState<Pesquisa | null>(null);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<StatusPesquisa | "todos">("todos");
+  const [cicloFilter, setCicloFilter] = React.useState<string>("todos");
   const [isLinkModalOpen, setIsLinkModalOpen] = React.useState(false);
   const [selectedSurveyId, setSelectedSurveyId] = React.useState("");
 
@@ -70,7 +71,8 @@ const PesquisasPage = () => {
   const filtered = pesquisas.filter((p) => {
     const matchesSearch = p.titulo.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "todos" || p.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesCiclo = cicloFilter === "todos" || String(p.id_ciclo) === cicloFilter;
+    return matchesSearch && matchesStatus && matchesCiclo;
   });
 
   const handleCloseDialog = () => {
@@ -161,6 +163,19 @@ const PesquisasPage = () => {
             <SelectItem value="Ativa">Ativas</SelectItem>
             <SelectItem value="Concluída">Concluídas</SelectItem>
             <SelectItem value="Arquivada">Arquivadas</SelectItem>
+        </Select>
+        <Select
+          value={cicloFilter}
+          onValueChange={setCicloFilter}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Ciclo: Todos" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos os Ciclos</SelectItem>
+            {Object.entries(ciclos).map(([id, nome]) => (
+              <SelectItem key={id} value={id}>{nome}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
