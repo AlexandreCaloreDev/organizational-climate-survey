@@ -8,7 +8,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
-import { PlusCircle, Trash2, Loader2 } from "lucide-react";
+import { PlusCircle, Trash2, Loader2, Lightbulb } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
@@ -53,6 +53,7 @@ const surveySchema = z.object({
   title: z.string().min(3, "O título deve ter no mínimo 3 caracteres."),
   description: z.string().optional(),
   setorId: z.string().min(1, "O setor é obrigatório."),
+  ciclo: z.string().min(3, "O ciclo de avaliação é obrigatório (ex: 2026.1)."),
   questions: z.array(questionSchema).min(1, "A pesquisa deve ter pelo menos 1 pergunta."),
 });
 
@@ -120,6 +121,7 @@ export function CreateSurveyForm({ onClose }: CreateSurveyFormProps) {
       title: "",
       description: "",
       setorId: "",
+      ciclo: "",
       questions: [{ text: "", type: "text", options: [] }],
     },
   });
@@ -165,6 +167,7 @@ export function CreateSurveyForm({ onClose }: CreateSurveyFormProps) {
         anonimato: true,
         id_user_admin: Number(user?.id || 1),
         status: "Ativa",
+        ciclo: data.ciclo,
       });
       pesquisaCriadaId = pesquisa.id_pesquisa;
 
@@ -215,10 +218,22 @@ export function CreateSurveyForm({ onClose }: CreateSurveyFormProps) {
         <Textarea id="description" {...form.register("description")} />
       </div>
 
+      {/* Ciclo de Avaliação */}
+      <div className="grid gap-2">
+        <Label htmlFor="ciclo">Ciclo de Avaliação (Período)</Label>
+        <Input id="ciclo" placeholder="Ex: 2026.1, Q1-2026, Anual-2026" {...form.register("ciclo")} />
+        {form.formState.errors.ciclo && (
+          <p className="text-red-500 text-sm">{form.formState.errors.ciclo.message}</p>
+        )}
+      </div>
+
       {/* Copiar Perguntas */}
       {existingSurveys.length > 0 && (
         <div className="grid gap-2 border p-3 rounded-lg bg-slate-50 border-slate-200">
-          <Label className="font-semibold text-sm text-blue-800 flex items-center gap-1">💡 Copiar Perguntas de Pesquisa Anterior</Label>
+          <Label className="font-semibold text-sm text-blue-800 flex items-center gap-2">
+            <Lightbulb className="h-4 w-4" />
+            Copiar Perguntas de Pesquisa Anterior
+          </Label>
           <Select
             onValueChange={handleCopyQuestionsFromSurvey}
           >

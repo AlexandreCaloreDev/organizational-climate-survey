@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,18 +13,20 @@ import { pesquisaService } from "@/lib/services/pesquisaService";
 import type { Pesquisa } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default function SurveyDetailsPage({ params }: { params: { id: string } }) {
+export default function SurveyDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const unwrappedParams = use(params);
+  const id = unwrappedParams.id;
   const [survey, setSurvey] = useState<Pesquisa | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [dateRange, setDateRange] = useState<any | undefined>(undefined);
 
   useEffect(() => {
     setIsLoading(true);
-    pesquisaService.getById(Number(params.id))
+    pesquisaService.getById(Number(id))
       .then(setSurvey)
       .catch(console.error)
       .finally(() => setIsLoading(false));
-  }, [params.id]);
+  }, [id]);
 
   if (isLoading) {
     return (
@@ -60,7 +62,7 @@ export default function SurveyDetailsPage({ params }: { params: { id: string } }
         </div>
 
         <div className="flex items-center space-x-4">
-          <ExportReportButton surveyId={String(params.id)} />
+          <ExportReportButton surveyId={String(id)} />
         </div>
       </div>
       <Card className="mb-6">
@@ -80,10 +82,10 @@ export default function SurveyDetailsPage({ params }: { params: { id: string } }
         </TabsList>
 
         <TabsContent value="tendencia" className="mt-4">
-          <SurveyHistoricalTrends surveyId={params.id} dateRange={dateRange} />
+          <SurveyHistoricalTrends surveyId={id} dateRange={dateRange} />
         </TabsContent>
         <TabsContent value="respostas" className="mt-4">
-          <SurveyResponseDetails surveyId={params.id} />
+          <SurveyResponseDetails surveyId={id} />
         </TabsContent>
       </Tabs>
     </section>

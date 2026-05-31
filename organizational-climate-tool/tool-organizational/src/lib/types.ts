@@ -66,6 +66,7 @@ export interface Pesquisa {
   qrcode_path: string;
   config_recorrencia?: string | null;
   anonimato: boolean;
+  ciclo?: string;
   perguntas?: Pergunta[];
   usuario_administrador?: UsuarioAdministrador;
   setor?: Setor;
@@ -143,6 +144,7 @@ export interface CreatePesquisaRequest {
   anonimato: boolean;
   id_user_admin?: number;
   status?: StatusPesquisa;
+  ciclo?: string;
 }
 
 export interface CreatePerguntaRequest {
@@ -197,4 +199,47 @@ export interface DashboardData {
   taxa_participacao: number;
   metricas_por_pergunta: MetricaPorPergunta[];
   nps_geral?: number;
+}
+
+// ─── Analytics / Relatório Cognitivo & Comportamental (NR17 Ref) ──────────────
+
+export interface AnalyticsFilterRequest {
+  id_empresa: number;
+  id_setor?: number | null;
+  ciclo?: string | null;
+}
+
+export interface AnalyticsKPI {
+  categoria: string;
+  score: number; // Porcentagem ou nota de 0 a 100
+  delta_anterior: number; // Variação em % (ex: 5.5, -2.1)
+}
+
+export interface RadarData {
+  categoria: string;
+  [setor_name: string]: string | number; // Dinâmico: keys serão os nomes dos setores
+}
+
+export interface HeatmapData {
+  setor: string;
+  dimensoes: Record<string, number>; // Record de Categoria -> Score (0 a 100)
+}
+
+export interface LineChartData {
+  ciclo: string;
+  dimensoes: Record<string, number>; // Record de Categoria -> Score (0 a 100)
+}
+
+export interface ActionPlan {
+  risco: string;
+  recomendacao: string;
+  setor?: string;
+}
+
+export interface RelatorioAnalyticsResponse {
+  kpis: AnalyticsKPI[];
+  radar?: RadarData[];         // Cenário A: Comparação entre todos os setores
+  heatmap?: HeatmapData[];     // Cenário A: Matriz Setor x Categoria
+  evolucao?: LineChartData[];  // Cenário B: Evolução ao longo dos ciclos
+  planos_de_acao: ActionPlan[];
 }

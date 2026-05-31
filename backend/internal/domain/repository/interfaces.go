@@ -4,6 +4,7 @@ package repository
 
 import (
 	"context"
+	"organizational-climate-survey/backend/internal/application/dto/response"
 	"organizational-climate-survey/backend/internal/domain/entity"
 	"time"
 )
@@ -143,6 +144,15 @@ type AnalyticsRepository interface {
 	GetPesquisaMetrics(ctx context.Context, pesquisaID int) (map[string]interface{}, error)
 	GetComparisonData(ctx context.Context, pesquisaIDs []int) (map[string]interface{}, error)
 	GetSetorComparison(ctx context.Context, empresaID int, pesquisaID int) (map[string]interface{}, error)
+
+	// NR17 / Relatório Cognitivo Methods
+	GetScoresGlobaisPorCiclo(ctx context.Context, idEmpresa int, ciclo string) ([]response.AnalyticsKPI, error)
+	GetRadarSetores(ctx context.Context, idEmpresa int, ciclo string) ([]map[string]interface{}, error)
+	GetHeatmapGlobal(ctx context.Context, idEmpresa int, ciclo string) ([]response.HeatmapData, error)
+	GetRiscosGlobais(ctx context.Context, idEmpresa int, ciclo string) ([]response.ActionPlan, error)
+	GetScoresSetorPorCiclo(ctx context.Context, idEmpresa int, idSetor int, ciclo string) ([]response.AnalyticsKPI, error)
+	GetHistoricoSetor(ctx context.Context, idEmpresa int, idSetor int) ([]response.LineChartData, error)
+	GetRiscosSetor(ctx context.Context, idEmpresa int, idSetor int, ciclo string) ([]response.ActionPlan, error)
 }
 
 type SubmissaoPesquisaRepository interface {

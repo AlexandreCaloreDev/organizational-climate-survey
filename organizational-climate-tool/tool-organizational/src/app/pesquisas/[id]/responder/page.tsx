@@ -42,9 +42,10 @@ function parseOptions(value: any): string[] {
   return [];
 }
 
-export default function PublicSurveyResponsePage({ params }: { params: { id: string } }) {
+export default function PublicSurveyResponsePage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
-  const id = params?.id;
+  const unwrappedParams = React.use(params);
+  const id = unwrappedParams?.id;
 
   const [survey, setSurvey] = useState<any | null>(null);
   const [loading, setLoading] = useState<boolean>(true);

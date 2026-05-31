@@ -14,6 +14,15 @@ export const dashboardService = {
     return apiGet<DashboardData>(`/dashboards/${id}/data`);
   },
 
+  getAnalyticsReport(ciclo: string, idSetor?: string | null): Promise<any> {
+    const queryParams = new URLSearchParams();
+    queryParams.append("ciclo", ciclo);
+    if (idSetor && idSetor !== "todos") {
+      queryParams.append("id_setor", idSetor);
+    }
+    return apiGet<any>(`/analytics?${queryParams.toString()}`);
+  },
+
   listByEmpresa(empresaId: number): Promise<Dashboard[]> {
     return apiGet<Dashboard[]>(`/empresas/${empresaId}/dashboards`);
   },

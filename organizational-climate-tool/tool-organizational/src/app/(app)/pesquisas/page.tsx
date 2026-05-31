@@ -29,6 +29,7 @@ import { pesquisaService } from "@/lib/services/pesquisaService";
 import type { Pesquisa, StatusPesquisa } from "@/lib/types";
 import { InfoContext } from "@/components/pesquisas/InfoContext";
 import { WelcomeSurveyModal } from "@/components/pesquisas/WelcomeSurveyModal";
+import { toast } from "sonner";
 
 const PesquisasPage = () => {
   const { user } = useAuth();
@@ -73,11 +74,16 @@ const PesquisasPage = () => {
   };
 
   const handleDelete = async (id: string) => {
+    const toastId = toast.loading("Excluindo pesquisa...");
     try {
       await pesquisaService.delete(Number(id));
+      toast.success("Pesquisa excluída com sucesso!", { id: toastId });
       fetchPesquisas();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      const msg = err?.response?.data?.message || err?.response?.data?.error || "Erro ao excluir pesquisa.";
+      toast.error(msg, { id: toastId });
+      throw err;
     }
   };
 
@@ -157,8 +163,8 @@ const PesquisasPage = () => {
         ) : filtered.length > 0 ? (
           filtered.map((pesquisa) => (
             <SurveyCard
-              key={pesquisa.id_pesquisa}
-              id={String(pesquisa.id_pesquisa)}
+              key={pesquisa.id_pesquisa || (pesquisa as any).id}
+              id={String(pesquisa.id_pesquisa || (pesquisa as any).id)}
               linkAcesso={pesquisa.link_acesso}
               title={pesquisa.titulo}
               description={pesquisa.descricao}

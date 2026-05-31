@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import QRCode from "react-qr-code";
 import { toast } from "sonner";
-import { Copy, ExternalLink } from "lucide-react";
+import { Copy, ExternalLink, Info } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 
 interface SurveyLinkModalProps {
@@ -111,11 +111,14 @@ export function SurveyLinkModal({ isOpen, onClose, surveyId }: SurveyLinkModalPr
                 <span className="sr-only">Copiar</span>
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {activeTab === "totem" 
-                ? "💡 Recomendado para computador compartilhado. A tela reinicia a cada 10s automaticamente após responder." 
-                : "💡 Recomendado para celulares pessoais. Limita tecnicamente para uma única resposta por celular."}
-            </p>
+            <div className="flex gap-2 items-start text-xs text-muted-foreground mt-1">
+              <Info className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5" />
+              <span>
+                {activeTab === "totem" 
+                  ? "Recomendado para computador compartilhado. A tela reinicia a cada 10s automaticamente após responder." 
+                  : "Recomendado para celulares pessoais. Limita tecnicamente para uma única resposta por celular."}
+              </span>
+            </div>
           </div>
           {finalLink && (
             <div className="flex flex-col items-center justify-center p-4 border rounded-md">

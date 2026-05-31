@@ -14,7 +14,7 @@ export const SurveyOverviewTab = ({ survey }: { survey: Pesquisa }) => {
   );
 
   useEffect(() => {
-    const surveyId = survey.id_pesquisa || (survey as any).id;
+    const surveyId = (survey as any).id_pesquisa || survey.id;
     if (!surveyId) return;
 
     respostaService.countByPesquisa(Number(surveyId))

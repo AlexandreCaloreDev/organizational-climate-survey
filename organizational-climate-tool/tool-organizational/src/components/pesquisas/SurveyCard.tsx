@@ -161,9 +161,17 @@ export const SurveyCard = ({
               Cancelar
             </Button>
             <Button 
-              onClick={() => {
-                if (onDelete) onDelete(id);
-                setIsDeleteDialogOpen(false);
+              onClick={async () => {
+                if (onDelete) {
+                  try {
+                    await onDelete(id);
+                    setIsDeleteDialogOpen(false);
+                  } catch {
+                    // O erro de exclusão já é tratado pelo handler pai ou pelo interceptor global
+                  }
+                } else {
+                  setIsDeleteDialogOpen(false);
+                }
               }} 
               className="bg-red-600 hover:bg-red-700 text-white"
             >
