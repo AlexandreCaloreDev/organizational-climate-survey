@@ -30,6 +30,8 @@ type RouterConfig struct {
 	SubmissaoUseCase            *usecase.SubmissaoPesquisaUseCase    // Use case de submissão (NOVO)
 	DashboardUseCase            *usecase.DashboardUseCase            // Use case de dashboard
 	LogAuditoriaUseCase         *usecase.LogAuditoriaUseCase         // Use case de log
+	CicloUseCase                *usecase.CicloUseCase                // NOVO: Use case de ciclo
+	AnalyticsUseCase            *usecase.AnalyticsUseCase            // NOVO: Use case de analytics
 	PesquisaRepo                repository.PesquisaRepository        // Repositório de pesquisa (NOVO - para middleware)
 	JWTSecret                   string                               // Chave secreta para JWT
 	BootstrapUseCase            *usecase.BootstrapUseCase            // Use case de bootstrap
@@ -98,6 +100,16 @@ func SetupRouter(config *RouterConfig) *mux.Router {
 		logHandler = handler.NewLogAuditoriaHandler(config.LogAuditoriaUseCase, log)
 	}
 
+	var cicloHandler *handler.CicloHandler
+	if config.CicloUseCase != nil {
+		cicloHandler = handler.NewCicloHandler(config.CicloUseCase, log)
+	}
+
+	var analyticsHandler *handler.AnalyticsHandler
+	if config.AnalyticsUseCase != nil {
+		analyticsHandler = handler.NewAnalyticsHandler(config.AnalyticsUseCase)
+	}
+
 	api := router.PathPrefix("/api/v1").Subrouter()
 
 	// === ROTAS PÚBLICAS (sem autenticação) ===
@@ -157,6 +169,12 @@ func SetupRouter(config *RouterConfig) *mux.Router {
 	authHandler.RegisterProtectedRoutes(authRoutes)
 	if submissaoHandler != nil {
 		submissaoHandler.RegisterProtectedRoutes(authRoutes)
+	}
+	if cicloHandler != nil {
+		cicloHandler.RegisterRoutes(authRoutes)
+	}
+	if analyticsHandler != nil {
+		analyticsHandler.RegisterRoutes(authRoutes)
 	}
 
 	// === ROTAS ADMINISTRATIVAS (requerem JWT + permissões admin) ===

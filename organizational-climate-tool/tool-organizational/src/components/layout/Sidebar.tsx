@@ -11,6 +11,7 @@ import {
   LucideIcon,
   LogOut,
   Building2,
+  CalendarDays,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import LogoAtmos from "@/public/images/logoAtmos.svg";
@@ -28,6 +29,7 @@ const navLinks: NavLink[] = [
   { href: "/pesquisas", label: "Pesquisas", icon: NotebookText },
   { href: "/resultados", label: "Resultados", icon: BarChart3 },
   { href: "/setores", label: "Setores", icon: Building2 },
+  { href: "/ciclos", label: "Ciclos", icon: CalendarDays },
   { href: "/configuracoes", label: "Configurações", icon: Settings },
 ];
 

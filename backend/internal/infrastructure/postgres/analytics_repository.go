@@ -3,15 +3,14 @@ package postgres
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"organizational-climate-survey/backend/internal/application/dto/response"
 )
 
 type AnalyticsRepository struct {
-	db *pgxpool.Pool
+	db *DB
 }
 
-func NewAnalyticsRepository(db *pgxpool.Pool) *AnalyticsRepository {
+func NewAnalyticsRepository(db *DB) *AnalyticsRepository {
 	return &AnalyticsRepository{db: db}
 }
 
@@ -27,12 +26,12 @@ func (r *AnalyticsRepository) GetScoresGlobaisPorCiclo(ctx context.Context, idEm
 		JOIN pesquisa pesq ON p.id_pesquisa = pesq.id_pesquisa
 		JOIN submissao_pesquisa sp ON r.id_submissao = sp.id_submissao
 		WHERE pesq.id_empresa = $1 
-		  AND ($2 = 'todos' OR pesq.titulo ILIKE '%' || $2 || '%')
+		  AND ($2 = 'todos' OR pesq.id_ciclo::TEXT = $2)
 		  AND sp.status = 'completa'
 		  AND r.valor_resposta ~ '^[0-9\.]+$'
 		GROUP BY p.tipo_pergunta
 	`
-	rows, err := r.db.Query(ctx, query, idEmpresa, ciclo)
+	rows, err := r.db.QueryContext(ctx, query, idEmpresa, ciclo)
 	if err != nil {
 		return nil, err
 	}
@@ -66,12 +65,12 @@ func (r *AnalyticsRepository) GetRadarSetores(ctx context.Context, idEmpresa int
 		JOIN submissao_pesquisa sp ON r.id_submissao = sp.id_submissao
 		JOIN setor s ON pesq.id_setor = s.id_setor
 		WHERE pesq.id_empresa = $1 
-		  AND ($2 = 'todos' OR pesq.titulo ILIKE '%' || $2 || '%')
+		  AND ($2 = 'todos' OR pesq.id_ciclo::TEXT = $2)
 		  AND sp.status = 'completa'
 		  AND r.valor_resposta ~ '^[0-9\.]+$'
 		GROUP BY s.nome_setor, p.tipo_pergunta
 	`
-	rows, err := r.db.Query(ctx, query, idEmpresa, ciclo)
+	rows, err := r.db.QueryContext(ctx, query, idEmpresa, ciclo)
 	if err != nil {
 		return nil, err
 	}
@@ -111,12 +110,12 @@ func (r *AnalyticsRepository) GetHeatmapGlobal(ctx context.Context, idEmpresa in
 		JOIN submissao_pesquisa sp ON r.id_submissao = sp.id_submissao
 		JOIN setor s ON pesq.id_setor = s.id_setor
 		WHERE pesq.id_empresa = $1 
-		  AND ($2 = 'todos' OR pesq.titulo ILIKE '%' || $2 || '%')
+		  AND ($2 = 'todos' OR pesq.id_ciclo::TEXT = $2)
 		  AND sp.status = 'completa'
 		  AND r.valor_resposta ~ '^[0-9\.]+$'
 		GROUP BY s.nome_setor, p.tipo_pergunta
 	`
-	rows, err := r.db.Query(ctx, query, idEmpresa, ciclo)
+	rows, err := r.db.QueryContext(ctx, query, idEmpresa, ciclo)
 	if err != nil {
 		return nil, err
 	}
@@ -158,14 +157,14 @@ func (r *AnalyticsRepository) GetRiscosGlobais(ctx context.Context, idEmpresa in
 		JOIN pesquisa pesq ON p.id_pesquisa = pesq.id_pesquisa
 		JOIN submissao_pesquisa sp ON r.id_submissao = sp.id_submissao
 		WHERE pesq.id_empresa = $1 
-		  AND ($2 = 'todos' OR pesq.titulo ILIKE '%' || $2 || '%')
+		  AND ($2 = 'todos' OR pesq.id_ciclo::TEXT = $2)
 		  AND sp.status = 'completa'
 		  AND r.valor_resposta ~ '^[0-9\.]+$'
 		GROUP BY p.tipo_pergunta
 		HAVING AVG(CAST(r.valor_resposta AS FLOAT)) * 20 < 60
 		LIMIT 5
 	`
-	rows, err := r.db.Query(ctx, query, idEmpresa, ciclo)
+	rows, err := r.db.QueryContext(ctx, query, idEmpresa, ciclo)
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +197,7 @@ func (r *AnalyticsRepository) GetScoresSetorPorCiclo(ctx context.Context, idEmpr
 		  AND r.valor_resposta ~ '^[0-9\.]+$'
 		GROUP BY p.tipo_pergunta
 	`
-	rows, err := r.db.Query(ctx, query, idEmpresa, idSetor, ciclo)
+	rows, err := r.db.QueryContext(ctx, query, idEmpresa, idSetor, ciclo)
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +231,7 @@ func (r *AnalyticsRepository) GetHistoricoSetor(ctx context.Context, idEmpresa i
 		GROUP BY pesq.titulo, p.tipo_pergunta
 		ORDER BY pesq.titulo ASC
 	`
-	rows, err := r.db.Query(ctx, query, idEmpresa, idSetor)
+	rows, err := r.db.QueryContext(ctx, query, idEmpresa, idSetor)
 	if err != nil {
 		return nil, err
 	}
@@ -280,7 +279,7 @@ func (r *AnalyticsRepository) GetHistoricoEmpresaGlobal(ctx context.Context, idE
 		GROUP BY pesq.titulo, p.tipo_pergunta
 		ORDER BY pesq.titulo ASC
 	`
-	rows, err := r.db.Query(ctx, query, idEmpresa)
+	rows, err := r.db.QueryContext(ctx, query, idEmpresa)
 	if err != nil {
 		return nil, err
 	}
@@ -330,7 +329,7 @@ func (r *AnalyticsRepository) GetRiscosSetor(ctx context.Context, idEmpresa int,
 		HAVING AVG(CAST(r.valor_resposta AS FLOAT)) * 20 < 60
 		LIMIT 5
 	`
-	rows, err := r.db.Query(ctx, query, idEmpresa, idSetor, ciclo)
+	rows, err := r.db.QueryContext(ctx, query, idEmpresa, idSetor, ciclo)
 	if err != nil {
 		return nil, err
 	}

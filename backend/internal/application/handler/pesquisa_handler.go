@@ -553,6 +553,7 @@ func (h *PesquisaHandler) toPesquisaResponse(pesquisa *entity.Pesquisa) *respons
 		LinkAcesso:     pesquisa.LinkAcesso,
 		QRCodePath:     pesquisa.QRCodePath,
 		Anonimato:      pesquisa.Anonimato,
+		IDCiclo:        pesquisa.IDCiclo,
 	}
 }
 

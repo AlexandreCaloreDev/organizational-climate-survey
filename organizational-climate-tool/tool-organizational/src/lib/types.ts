@@ -41,6 +41,15 @@ export interface Setor {
   empresa?: Empresa;
 }
 
+export interface Ciclo {
+  id_ciclo: number;
+  id_empresa: number;
+  nome: string;
+  recorrencia?: string | null;
+  data_criacao: string;
+  data_atualizacao: string;
+}
+
 export interface Pergunta {
   id_pergunta: number;
   id_pesquisa: number;
@@ -66,7 +75,7 @@ export interface Pesquisa {
   qrcode_path: string;
   config_recorrencia?: string | null;
   anonimato: boolean;
-  ciclo?: string;
+  id_ciclo?: number;
   perguntas?: Pergunta[];
   usuario_administrador?: UsuarioAdministrador;
   setor?: Setor;
@@ -144,7 +153,7 @@ export interface CreatePesquisaRequest {
   anonimato: boolean;
   id_user_admin?: number;
   status?: StatusPesquisa;
-  ciclo?: string;
+  id_ciclo?: number;
 }
 
 export interface CreatePerguntaRequest {

@@ -159,6 +159,17 @@ func main() {
 	if repos.Dashboard != nil && repos.Pesquisa != nil && repos.Empresa != nil && repos.LogAuditoria != nil {
 		dashboardUseCase = usecase.NewDashboardUseCase(repos.Dashboard, repos.Pesquisa, repos.Pergunta, repos.Resposta, repos.Empresa, repos.LogAuditoria)
 	}
+
+	var cicloUseCase *usecase.CicloUseCase
+	if repos.Ciclo != nil {
+		cicloUseCase = usecase.NewCicloUseCase(repos.Ciclo)
+	}
+
+	var analyticsUseCase *usecase.AnalyticsUseCase
+	if repos.Analytics != nil && repos.Setor != nil {
+		analyticsUseCase = usecase.NewAnalyticsUseCase(repos.Analytics, repos.Pesquisa, repos.LogAuditoria)
+	}
+
 	log.Println("✅ Use cases inicializados")
 
 	var recurringScheduler *scheduler.RecurringSurveyScheduler
@@ -189,6 +200,8 @@ func main() {
 		SubmissaoUseCase:            submissaoUseCase,
 		DashboardUseCase:            dashboardUseCase,
 		LogAuditoriaUseCase:         logUseCase,
+		CicloUseCase:                cicloUseCase,
+		AnalyticsUseCase:            analyticsUseCase,
 		PesquisaRepo:                repos.Pesquisa,
 		JWTSecret:                   cfg.JWT.Secret,
 		BootstrapUseCase:            bootstrapUseCase,

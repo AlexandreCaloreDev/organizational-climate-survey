@@ -26,7 +26,8 @@ import { SurveyLinkModal } from "@/components/modals/SurveyLinkModal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/context/AuthContext";
 import { pesquisaService } from "@/lib/services/pesquisaService";
-import type { Pesquisa, StatusPesquisa } from "@/lib/types";
+import { cicloService } from "@/lib/services/cicloService";
+import type { Pesquisa, StatusPesquisa, Ciclo } from "@/lib/types";
 import { InfoContext } from "@/components/pesquisas/InfoContext";
 import { WelcomeSurveyModal } from "@/components/pesquisas/WelcomeSurveyModal";
 import { toast } from "sonner";
@@ -34,6 +35,7 @@ import { toast } from "sonner";
 const PesquisasPage = () => {
   const { user } = useAuth();
   const [pesquisas, setPesquisas] = React.useState<Pesquisa[]>([]);
+  const [ciclos, setCiclos] = React.useState<Record<number, string>>({});
   const [isLoading, setIsLoading] = React.useState(true);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [selectedSurvey, setSelectedSurvey] = React.useState<Pesquisa | null>(null);
@@ -46,8 +48,16 @@ const PesquisasPage = () => {
     if (!user?.empresa_id) return;
     setIsLoading(true);
     try {
-      const data = await pesquisaService.listByEmpresa(user.empresa_id);
-      setPesquisas(data);
+      const [pesquisasData, ciclosData] = await Promise.all([
+        pesquisaService.listByEmpresa(user.empresa_id),
+        cicloService.listByEmpresa(user.empresa_id)
+      ]);
+      setPesquisas(pesquisasData);
+      const ciclosMap = ciclosData.reduce((acc, c) => {
+        acc[c.id_ciclo] = c.nome;
+        return acc;
+      }, {} as Record<number, string>);
+      setCiclos(ciclosMap);
     } finally {
       setIsLoading(false);
     }
@@ -161,16 +171,20 @@ const PesquisasPage = () => {
             <Skeleton key={i} className="h-48 w-full rounded-xl" />
           ))
         ) : filtered.length > 0 ? (
-          filtered.map((pesquisa) => (
+          filtered.map((p) => (
             <SurveyCard
-              key={pesquisa.id_pesquisa || (pesquisa as any).id}
-              id={String(pesquisa.id_pesquisa || (pesquisa as any).id)}
-              linkAcesso={pesquisa.link_acesso}
-              title={pesquisa.titulo}
-              description={pesquisa.descricao}
-              tag={pesquisa.status}
-              creationDate={new Date(pesquisa.data_criacao).toLocaleDateString("pt-BR")}
-              onViewDetails={() => setSelectedSurvey(pesquisa)}
+              key={p.id_pesquisa}
+              id={String(p.id_pesquisa)}
+              linkAcesso={p.link_acesso}
+              title={p.titulo}
+              description={p.descricao}
+              tag={p.status}
+              creationDate={p.data_criacao}
+              cicloName={p.id_ciclo ? ciclos[p.id_ciclo] : undefined}
+              onViewDetails={() => {
+                setSelectedSurvey(p);
+                setIsDialogOpen(true);
+              }}
               onGenerateLink={handleGenerateLink}
               onDelete={handleDelete}
               onChangeStatus={handleChangeStatus}

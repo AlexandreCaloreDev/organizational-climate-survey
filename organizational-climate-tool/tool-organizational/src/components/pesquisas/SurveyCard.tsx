@@ -26,6 +26,7 @@ type SurveyCardProps = {
   description: string;
   tag: string;
   creationDate: string;
+  cicloName?: string;
   onViewDetails: () => void;
   onGenerateLink: (link: string) => void;
   onDelete?: (id: string) => void | Promise<void>;
@@ -39,6 +40,7 @@ export const SurveyCard = ({
   description,
   tag,
   creationDate,
+  cicloName,
   onViewDetails,
   onGenerateLink,
   onDelete,
@@ -128,7 +130,10 @@ export const SurveyCard = ({
           </p>
         </CardContent>
         <CardFooter className="flex justify-between items-center text-sm text-muted-foreground">
-          <span>Criado em: {creationDate}</span>
+          <div className="flex flex-col">
+            <span>Criado em: {creationDate}</span>
+            {cicloName && <span className="text-xs text-blue-600 mt-1 font-medium">Ciclo: {cicloName}</span>}
+          </div>
           <div className="flex items-center gap-2">
             <Button
               size="icon"

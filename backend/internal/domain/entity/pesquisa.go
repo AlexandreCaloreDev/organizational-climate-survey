@@ -20,6 +20,7 @@ type Pesquisa struct {
 	QRCodePath        string     `json:"qrcode_path" example:"/uploads/qrcodes/abc123xyz.png"`                // Caminho do QR Code gerado
 	ConfigRecorrencia *string    `json:"config_recorrencia" example:"mensal"`                                 // Configuração de recorrência
 	Anonimato         bool       `json:"anonimato" example:"true"`                                            // Se respostas são anônimas
+	IDCiclo           *int       `json:"id_ciclo,omitempty" example:"1"`                                      // ID do ciclo de avaliação
 
 	// Relacionamentos (opcional, para carregamento sob demanda)
 	Perguntas            []Pergunta            `json:"perguntas,omitempty" example:"[{\"id_pergunta\":15,\"texto_pergunta\":\"Como você avalia o ambiente?\"}]"` // Lista de perguntas

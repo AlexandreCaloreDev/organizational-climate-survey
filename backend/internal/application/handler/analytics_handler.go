@@ -7,6 +7,7 @@ import (
 
 	"organizational-climate-survey/backend/internal/application/dto/response"
 	"organizational-climate-survey/backend/internal/domain/usecase"
+	"github.com/gorilla/mux"
 )
 
 type AnalyticsHandler struct {
@@ -15,6 +16,10 @@ type AnalyticsHandler struct {
 
 func NewAnalyticsHandler(analyticsUC *usecase.AnalyticsUseCase) *AnalyticsHandler {
 	return &AnalyticsHandler{analyticsUC: analyticsUC}
+}
+
+func (h *AnalyticsHandler) RegisterRoutes(router *mux.Router) {
+	router.HandleFunc("/analytics", h.GetAnalyticsReport).Methods("GET")
 }
 
 // GetAnalyticsReport gera o relatório analítico (Cenário A ou B) com base nos filtros

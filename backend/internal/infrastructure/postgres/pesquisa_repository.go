@@ -34,8 +34,8 @@ func (r *PesquisaRepository) Create(ctx context.Context, pesquisa *entity.Pesqui
 	query := `
         INSERT INTO pesquisa (id_empresa, id_user_admin, id_setor, titulo, descricao, 
                             data_criacao, data_abertura, data_fechamento, status, 
-                            link_acesso, qrcode_path, config_recorrencia, anonimato)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                            link_acesso, qrcode_path, config_recorrencia, anonimato, id_ciclo)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         RETURNING id_pesquisa
     `
 
@@ -53,6 +53,7 @@ func (r *PesquisaRepository) Create(ctx context.Context, pesquisa *entity.Pesqui
 		pesquisa.QRCodePath,
 		pesquisa.ConfigRecorrencia,
 		pesquisa.Anonimato,
+		pesquisa.IDCiclo,
 	).Scan(&pesquisa.ID)
 
 	if err != nil {
@@ -70,7 +71,7 @@ func (r *PesquisaRepository) GetByID(ctx context.Context, id int) (*entity.Pesqu
 	query := `
         SELECT id_pesquisa, id_empresa, id_user_admin, id_setor, titulo, descricao,
                data_criacao, data_abertura, data_fechamento, status, link_acesso,
-               qrcode_path, config_recorrencia, anonimato
+               qrcode_path, config_recorrencia, anonimato, id_ciclo
         FROM pesquisa
         WHERE id_pesquisa = $1
     `
@@ -90,6 +91,7 @@ func (r *PesquisaRepository) GetByID(ctx context.Context, id int) (*entity.Pesqu
 		&pesquisa.QRCodePath,
 		&pesquisa.ConfigRecorrencia,
 		&pesquisa.Anonimato,
+		&pesquisa.IDCiclo,
 	)
 
 	if err != nil {
@@ -110,7 +112,7 @@ func (r *PesquisaRepository) GetByLinkAcesso(ctx context.Context, link string) (
 	query := `
         SELECT id_pesquisa, id_empresa, id_user_admin, id_setor, titulo, descricao,
                data_criacao, data_abertura, data_fechamento, status, link_acesso,
-               qrcode_path, config_recorrencia, anonimato
+               qrcode_path, config_recorrencia, anonimato, id_ciclo
         FROM pesquisa
         WHERE link_acesso = $1
     `
@@ -130,6 +132,7 @@ func (r *PesquisaRepository) GetByLinkAcesso(ctx context.Context, link string) (
 		&pesquisa.QRCodePath,
 		&pesquisa.ConfigRecorrencia,
 		&pesquisa.Anonimato,
+		&pesquisa.IDCiclo,
 	)
 
 	if err != nil {
@@ -149,7 +152,7 @@ func (r *PesquisaRepository) ListByEmpresa(ctx context.Context, empresaID int) (
 	query := `
         SELECT id_pesquisa, id_empresa, id_user_admin, id_setor, titulo, descricao,
                data_criacao, data_abertura, data_fechamento, status, link_acesso,
-               qrcode_path, config_recorrencia, anonimato
+               qrcode_path, config_recorrencia, anonimato, id_ciclo
         FROM pesquisa
         WHERE id_empresa = $1
         ORDER BY data_criacao DESC
@@ -181,6 +184,7 @@ func (r *PesquisaRepository) ListByEmpresa(ctx context.Context, empresaID int) (
 			&pesquisa.QRCodePath,
 			&pesquisa.ConfigRecorrencia,
 			&pesquisa.Anonimato,
+			&pesquisa.IDCiclo,
 		)
 		if err != nil {
 			r.logger.Error("erro ao escanear pesquisa: %v", err)
@@ -203,7 +207,7 @@ func (r *PesquisaRepository) ListBySetor(ctx context.Context, setorID int) ([]*e
 	query := `
         SELECT id_pesquisa, id_empresa, id_user_admin, id_setor, titulo, descricao,
                data_criacao, data_abertura, data_fechamento, status, link_acesso,
-               qrcode_path, config_recorrencia, anonimato
+               qrcode_path, config_recorrencia, anonimato, id_ciclo
         FROM pesquisa
         WHERE id_setor = $1
         ORDER BY data_criacao DESC
@@ -235,6 +239,7 @@ func (r *PesquisaRepository) ListBySetor(ctx context.Context, setorID int) ([]*e
 			&pesquisa.QRCodePath,
 			&pesquisa.ConfigRecorrencia,
 			&pesquisa.Anonimato,
+			&pesquisa.IDCiclo,
 		)
 		if err != nil {
 			r.logger.Error("erro ao escanear pesquisa: %v", err)
@@ -257,7 +262,7 @@ func (r *PesquisaRepository) ListByStatus(ctx context.Context, empresaID int, st
 	query := `
         SELECT id_pesquisa, id_empresa, id_user_admin, id_setor, titulo, descricao,
                data_criacao, data_abertura, data_fechamento, status, link_acesso,
-               qrcode_path, config_recorrencia, anonimato
+               qrcode_path, config_recorrencia, anonimato, id_ciclo
         FROM pesquisa
         WHERE id_empresa = $1 AND status = $2
         ORDER BY data_criacao DESC
@@ -289,6 +294,7 @@ func (r *PesquisaRepository) ListByStatus(ctx context.Context, empresaID int, st
 			&pesquisa.QRCodePath,
 			&pesquisa.ConfigRecorrencia,
 			&pesquisa.Anonimato,
+			&pesquisa.IDCiclo,
 		)
 		if err != nil {
 			r.logger.Error("erro ao escanear pesquisa: %v", err)
@@ -311,7 +317,7 @@ func (r *PesquisaRepository) ListActive(ctx context.Context, empresaID int) ([]*
 	query := `
         SELECT id_pesquisa, id_empresa, id_user_admin, id_setor, titulo, descricao,
                data_criacao, data_abertura, data_fechamento, status, link_acesso,
-               qrcode_path, config_recorrencia, anonimato
+               qrcode_path, config_recorrencia, anonimato, id_ciclo
         FROM pesquisa
         WHERE id_empresa = $1 AND status = 'Ativa'
         AND (data_abertura IS NULL OR data_abertura <= NOW())
@@ -345,6 +351,7 @@ func (r *PesquisaRepository) ListActive(ctx context.Context, empresaID int) ([]*
 			&pesquisa.QRCodePath,
 			&pesquisa.ConfigRecorrencia,
 			&pesquisa.Anonimato,
+			&pesquisa.IDCiclo,
 		)
 		if err != nil {
 			r.logger.Error("erro ao escanear pesquisa: %v", err)
@@ -367,7 +374,7 @@ func (r *PesquisaRepository) Update(ctx context.Context, pesquisa *entity.Pesqui
 	query := `
         UPDATE pesquisa 
         SET titulo = $2, descricao = $3, data_abertura = $4, data_fechamento = $5,
-            status = $6, qrcode_path = $7, config_recorrencia = $8
+            status = $6, qrcode_path = $7, config_recorrencia = $8, id_ciclo = $9
         WHERE id_pesquisa = $1
     `
 
@@ -380,6 +387,7 @@ func (r *PesquisaRepository) Update(ctx context.Context, pesquisa *entity.Pesqui
 		pesquisa.Status,
 		pesquisa.QRCodePath,
 		pesquisa.ConfigRecorrencia,
+		pesquisa.IDCiclo,
 	)
 
 	if err != nil {

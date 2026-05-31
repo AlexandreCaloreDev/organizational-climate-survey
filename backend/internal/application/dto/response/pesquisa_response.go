@@ -19,6 +19,7 @@ type PesquisaResponse struct {
 	LinkAcesso           string                        `json:"link_acesso" example:"abc123xyz"`                                                                          // Link de acesso à pesquisa
 	QRCodePath           string                        `json:"qrcode_path" example:"/uploads/qrcodes/abc123xyz.png"`                                                     // Caminho para QR Code da pesquisa
 	Anonimato            bool                          `json:"anonimato" example:"true"`                                                                                 // Indica se a pesquisa é anônima
+	IDCiclo              *int                          `json:"id_ciclo,omitempty" example:"1"`                                                                           // ID do ciclo de avaliação, opcional
 	TotalPerguntas       int                           `json:"total_perguntas,omitempty" example:"20"`                                                                   // Número total de perguntas, opcional
 	TotalRespostas       int                           `json:"total_respostas,omitempty" example:"300"`                                                                  // Número total de respostas, opcional
 	TaxaParticipacao     float64                       `json:"taxa_participacao,omitempty" example:"75.0"`                                                               // Taxa média de participação, opcional

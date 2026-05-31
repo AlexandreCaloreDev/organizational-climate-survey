@@ -170,3 +170,13 @@ type SubmissaoPesquisaRepository interface {
 	CountCompleteByPesquisa(ctx context.Context, pesquisaID int) (int, error)
 	AnonymizePersonalData(ctx context.Context, id int, anonymizedToken string) error
 }
+
+// CicloRepository manipula operações de banco de dados para ciclos de avaliação
+type CicloRepository interface {
+	Create(ctx context.Context, ciclo *entity.CicloAvaliacao) error
+	GetByID(ctx context.Context, id int) (*entity.CicloAvaliacao, error)
+	ListByEmpresa(ctx context.Context, empresaID int) ([]entity.CicloAvaliacao, error)
+	Update(ctx context.Context, ciclo *entity.CicloAvaliacao) error
+	Delete(ctx context.Context, id int) error
+}
+

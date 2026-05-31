@@ -16,7 +16,8 @@ import { useAuth } from "@/context/AuthContext";
 import { pesquisaService } from "@/lib/services/pesquisaService";
 import { perguntaService } from "@/lib/services/perguntaService";
 import { setorService } from "@/lib/services/setorService";
-import type { TipoPergunta, Setor, Pesquisa } from "@/lib/types";
+import { cicloService } from "@/lib/services/cicloService";
+import type { TipoPergunta, Setor, Pesquisa, Ciclo } from "@/lib/types";
 import { useEffect, useState } from "react";
 
 const tipoMap: Record<string, TipoPergunta> = {
@@ -53,7 +54,7 @@ const surveySchema = z.object({
   title: z.string().min(3, "O título deve ter no mínimo 3 caracteres."),
   description: z.string().optional(),
   setorId: z.string().min(1, "O setor é obrigatório."),
-  ciclo: z.string().min(3, "O ciclo de avaliação é obrigatório (ex: 2026.1)."),
+  id_ciclo: z.string().min(1, "O ciclo de avaliação é obrigatório."),
   questions: z.array(questionSchema).min(1, "A pesquisa deve ter pelo menos 1 pergunta."),
 });
 
@@ -66,7 +67,9 @@ interface CreateSurveyFormProps {
 export function CreateSurveyForm({ onClose }: CreateSurveyFormProps) {
   const { user } = useAuth();
   const [setores, setSetores] = useState<Setor[]>([]);
+  const [ciclos, setCiclos] = useState<Ciclo[]>([]);
   const [isLoadingSetores, setIsLoadingSetores] = useState(true);
+  const [isLoadingCiclos, setIsLoadingCiclos] = useState(true);
   const [existingSurveys, setExistingSurveys] = useState<Pesquisa[]>([]);
 
   const mapApiPerguntaToForm = (q: any): any => {
@@ -121,7 +124,7 @@ export function CreateSurveyForm({ onClose }: CreateSurveyFormProps) {
       title: "",
       description: "",
       setorId: "",
-      ciclo: "",
+      id_ciclo: "",
       questions: [{ text: "", type: "text", options: [] }],
     },
   });
@@ -146,6 +149,17 @@ export function CreateSurveyForm({ onClose }: CreateSurveyFormProps) {
       .catch(() => toast.error("Não foi possível carregar os setores."))
       .finally(() => setIsLoadingSetores(false));
 
+    cicloService
+      .listByEmpresa(empresaId)
+      .then((data) => {
+        setCiclos(data);
+        if (data.length === 1) {
+          form.setValue("id_ciclo", String(data[0].id_ciclo), { shouldValidate: true });
+        }
+      })
+      .catch(() => toast.error("Não foi possível carregar os ciclos."))
+      .finally(() => setIsLoadingCiclos(false));
+
     // Carregar pesquisas existentes para opção de cópia
     pesquisaService
       .listByEmpresa(empresaId)
@@ -167,7 +181,7 @@ export function CreateSurveyForm({ onClose }: CreateSurveyFormProps) {
         anonimato: true,
         id_user_admin: Number(user?.id || 1),
         status: "Ativa",
-        ciclo: data.ciclo,
+        id_ciclo: Number(data.id_ciclo),
       });
       pesquisaCriadaId = pesquisa.id_pesquisa;
 
@@ -220,10 +234,30 @@ export function CreateSurveyForm({ onClose }: CreateSurveyFormProps) {
 
       {/* Ciclo de Avaliação */}
       <div className="grid gap-2">
-        <Label htmlFor="ciclo">Ciclo de Avaliação (Período)</Label>
-        <Input id="ciclo" placeholder="Ex: 2026.1, Q1-2026, Anual-2026" {...form.register("ciclo")} />
-        {form.formState.errors.ciclo && (
-          <p className="text-red-500 text-sm">{form.formState.errors.ciclo.message}</p>
+        <Label>Ciclo de Avaliação</Label>
+        {isLoadingCiclos ? (
+          <div className="flex items-center gap-2 text-muted-foreground text-sm">
+            <Loader2 className="h-4 w-4 animate-spin" /> Carregando ciclos...
+          </div>
+        ) : (
+          <Select
+            onValueChange={(value) => form.setValue("id_ciclo", value, { shouldValidate: true })}
+            value={form.watch("id_ciclo")}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione o ciclo de avaliação" />
+            </SelectTrigger>
+            <SelectContent>
+              {ciclos.map((c) => (
+                <SelectItem key={c.id_ciclo} value={String(c.id_ciclo)}>
+                  {c.nome} {c.recorrencia ? `(${c.recorrencia})` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {form.formState.errors.id_ciclo && (
+          <p className="text-red-500 text-sm">{form.formState.errors.id_ciclo.message}</p>
         )}
       </div>
 

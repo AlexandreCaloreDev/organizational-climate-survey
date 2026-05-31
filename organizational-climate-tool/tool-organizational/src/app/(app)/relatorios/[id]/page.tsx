@@ -56,6 +56,7 @@ import { pesquisaService } from "@/lib/services/pesquisaService";
 import { respostaService } from "@/lib/services/respostaService";
 import { dashboardService } from "@/lib/services/dashboardService";
 import { setorService } from "@/lib/services/setorService";
+import { cicloService } from "@/lib/services/cicloService";
 import {
   buildResultsFromPerguntas,
   calcNps,
@@ -256,6 +257,7 @@ const RelatorioPage = () => {
   const [pageLoading, setPageLoading] = useState(true);
   const [eixosNR17, setEixosNR17] = useState<EixoNR17[]>([]);
   const [eixosPorSetor, setEixosPorSetor] = useState<{ setor: string; eixos: EixoNR17[] }[]>([]);
+  const [cicloAtual, setCicloAtual] = useState<string>("Este Relatório Isolado");
 
   useEffect(() => {
     const load = async () => {
@@ -269,9 +271,21 @@ const RelatorioPage = () => {
         let setoresLocal: { id_setor: number; nome_setor: string }[] = [];
         if (pesquisa?.id_empresa) {
           try {
-            setoresLocal = await setorService.listByEmpresa(pesquisa.id_empresa);
+            const [setoresResponse, ciclosResponse] = await Promise.all([
+              setorService.listByEmpresa(pesquisa.id_empresa),
+              cicloService.listByEmpresa(pesquisa.id_empresa)
+            ]);
+            setoresLocal = setoresResponse;
             setSetoresCadastro(setoresLocal);
-          } catch {}
+            if (pesquisa.id_ciclo) {
+              const cicloEncontrado = ciclosResponse.find((c: any) => c.id_ciclo === pesquisa.id_ciclo);
+              if (cicloEncontrado) {
+                setCicloAtual(cicloEncontrado.nome);
+              }
+            }
+          } catch (e) {
+            console.error("Erro ao carregar filtros auxiliares", e);
+          }
         }
 
         const perguntas = (await pesquisaService.listPerguntas(pid)) || [];
@@ -414,7 +428,7 @@ const RelatorioPage = () => {
         
         <div className="flex items-center gap-4">
           <div className="w-[200px]">
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Modo de Visualização</label>
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Ciclo de Avaliação</label>
             <select 
               className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               onChange={(e) => {
@@ -424,8 +438,8 @@ const RelatorioPage = () => {
               }}
               defaultValue="especifico"
             >
-              <option value="especifico">Este Relatório Isolado</option>
-              <option value="todos">Matriz Global (Todos os Períodos)</option>
+              <option value="especifico">{cicloAtual}</option>
+              <option value="todos">Todos os Períodos</option>
             </select>
           </div>
 

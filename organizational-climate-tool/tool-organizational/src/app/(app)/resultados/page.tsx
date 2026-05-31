@@ -9,8 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TrendingUp, TrendingDown, Minus, AlertTriangle, Lightbulb } from "lucide-react";
 import { dashboardService } from "@/lib/services/dashboardService";
 import { setorService } from "@/lib/services/setorService";
-import { pesquisaService } from "@/lib/services/pesquisaService";
-import type { RelatorioAnalyticsResponse, Setor } from "@/lib/types";
+import { cicloService } from "@/lib/services/cicloService";
+import type { RelatorioAnalyticsResponse, Setor, Ciclo } from "@/lib/types";
 
 export default function AnalyticsDashboardPage() {
   const [cicloSelecionado, setCicloSelecionado] = useState<string>("todos");
@@ -19,7 +19,7 @@ export default function AnalyticsDashboardPage() {
   const [dados, setDados] = useState<RelatorioAnalyticsResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   
-  const [ciclosDisponiveis, setCiclosDisponiveis] = useState<string[]>([]);
+  const [ciclosDisponiveis, setCiclosDisponiveis] = useState<Ciclo[]>([]);
   const [setoresDisponiveis, setSetoresDisponiveis] = useState<Setor[]>([]);
 
   // Carrega Filtros Dinâmicos
@@ -27,19 +27,13 @@ export default function AnalyticsDashboardPage() {
     const carregarFiltros = async () => {
       try {
         const empresaId = 1; // ID da empresa mockado ou vindo de contexto de auth no futuro
-        const [setores, pesquisas] = await Promise.all([
+        const [setores, ciclos] = await Promise.all([
           setorService.listByEmpresa(empresaId),
-          pesquisaService.listByEmpresa(empresaId)
+          cicloService.listByEmpresa(empresaId)
         ]);
         
         setSetoresDisponiveis(setores || []);
-        
-        // Extrai títulos únicos (ciclos) das pesquisas
-        const ciclosUnicos = Array.from(new Set(pesquisas?.map(p => p.titulo).filter(Boolean)));
-        setCiclosDisponiveis(ciclosUnicos);
-        
-        // Se houver ciclos, seleciona o primeiro se o usuário não quiser todos por padrão
-        // Deixamos "todos" como padrão conforme a lógica do quadrante
+        setCiclosDisponiveis(ciclos || []);
       } catch (err) {
         console.error("Erro ao carregar filtros", err);
       }
@@ -85,7 +79,7 @@ export default function AnalyticsDashboardPage() {
               <SelectContent>
                 <SelectItem value="todos" className="font-semibold text-blue-600">Todos os Períodos</SelectItem>
                 {ciclosDisponiveis.map(c => (
-                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                  <SelectItem key={c.id_ciclo} value={c.id_ciclo.toString()}>{c.nome}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

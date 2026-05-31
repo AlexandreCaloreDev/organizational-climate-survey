@@ -86,6 +86,8 @@ type Repositories struct {
 	SubmissaoPesquisa    *SubmissaoPesquisaRepository // NOVO
 	Dashboard            *DashboardRepository
 	LogAuditoria         *LogAuditoriaRepository
+	Ciclo                *CicloRepository
+	Analytics            *AnalyticsRepository
 }
 
 // NewRepositories inicializa todos os repositórios com a conexão fornecida
@@ -101,5 +103,7 @@ func NewRepositories(db *DB) *Repositories {
 		SubmissaoPesquisa:    NewSubmissaoPesquisaRepository(db), // NOVO
 		Dashboard:            NewDashboardRepository(db),
 		LogAuditoria:         NewLogAuditoriaRepository(db),
+		Ciclo:                NewCicloRepository(db),
+		Analytics:            NewAnalyticsRepository(db),
 	}
 }
