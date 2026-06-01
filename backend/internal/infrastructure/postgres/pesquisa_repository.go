@@ -69,12 +69,17 @@ func (r *PesquisaRepository) Create(ctx context.Context, pesquisa *entity.Pesqui
 func (r *PesquisaRepository) GetByID(ctx context.Context, id int) (*entity.Pesquisa, error) {
 	pesquisa := &entity.Pesquisa{}
 	query := `
-        SELECT id_pesquisa, id_empresa, id_user_admin, id_setor, titulo, descricao,
-               data_criacao, data_abertura, data_fechamento, status, link_acesso,
-               qrcode_path, config_recorrencia, anonimato, id_ciclo
-        FROM pesquisa
-        WHERE id_pesquisa = $1
+        SELECT p.id_pesquisa, p.id_empresa, p.id_user_admin, p.id_setor, p.titulo, p.descricao,
+               p.data_criacao, p.data_abertura, p.data_fechamento, p.status, p.link_acesso,
+               p.qrcode_path, p.config_recorrencia, p.anonimato, p.id_ciclo,
+               s.nome_setor, s.descricao
+        FROM pesquisa p
+        LEFT JOIN setor s ON p.id_setor = s.id_setor
+        WHERE p.id_pesquisa = $1
     `
+
+	var nullCiclo sql.NullInt32
+	var setorNome, setorDesc sql.NullString
 
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&pesquisa.ID,
@@ -91,7 +96,9 @@ func (r *PesquisaRepository) GetByID(ctx context.Context, id int) (*entity.Pesqu
 		&pesquisa.QRCodePath,
 		&pesquisa.ConfigRecorrencia,
 		&pesquisa.Anonimato,
-		&pesquisa.IDCiclo,
+		&nullCiclo,
+		&setorNome,
+		&setorDesc,
 	)
 
 	if err != nil {
@@ -102,6 +109,19 @@ func (r *PesquisaRepository) GetByID(ctx context.Context, id int) (*entity.Pesqu
 		return nil, fmt.Errorf("erro ao buscar pesquisa: %v", err)
 	}
 
+	if nullCiclo.Valid {
+		v := int(nullCiclo.Int32)
+		pesquisa.IDCiclo = &v
+	}
+	if setorNome.Valid {
+		pesquisa.Setor = &entity.Setor{
+			ID:        pesquisa.IDSetor,
+			IDEmpresa: pesquisa.IDEmpresa,
+			NomeSetor: setorNome.String,
+			Descricao: setorDesc.String,
+		}
+	}
+
 	return pesquisa, nil
 }
 
@@ -110,12 +130,17 @@ func (r *PesquisaRepository) GetByID(ctx context.Context, id int) (*entity.Pesqu
 func (r *PesquisaRepository) GetByLinkAcesso(ctx context.Context, link string) (*entity.Pesquisa, error) {
 	pesquisa := &entity.Pesquisa{}
 	query := `
-        SELECT id_pesquisa, id_empresa, id_user_admin, id_setor, titulo, descricao,
-               data_criacao, data_abertura, data_fechamento, status, link_acesso,
-               qrcode_path, config_recorrencia, anonimato, id_ciclo
-        FROM pesquisa
-        WHERE link_acesso = $1
+        SELECT p.id_pesquisa, p.id_empresa, p.id_user_admin, p.id_setor, p.titulo, p.descricao,
+               p.data_criacao, p.data_abertura, p.data_fechamento, p.status, p.link_acesso,
+               p.qrcode_path, p.config_recorrencia, p.anonimato, p.id_ciclo,
+               s.nome_setor, s.descricao
+        FROM pesquisa p
+        LEFT JOIN setor s ON p.id_setor = s.id_setor
+        WHERE p.link_acesso = $1
     `
+
+	var nullCiclo sql.NullInt32
+	var setorNome, setorDesc sql.NullString
 
 	err := r.db.QueryRowContext(ctx, query, link).Scan(
 		&pesquisa.ID,
@@ -132,7 +157,9 @@ func (r *PesquisaRepository) GetByLinkAcesso(ctx context.Context, link string) (
 		&pesquisa.QRCodePath,
 		&pesquisa.ConfigRecorrencia,
 		&pesquisa.Anonimato,
-		&pesquisa.IDCiclo,
+		&nullCiclo,
+		&setorNome,
+		&setorDesc,
 	)
 
 	if err != nil {
@@ -143,6 +170,19 @@ func (r *PesquisaRepository) GetByLinkAcesso(ctx context.Context, link string) (
 		return nil, fmt.Errorf("erro ao buscar pesquisa: %v", err)
 	}
 
+	if nullCiclo.Valid {
+		v := int(nullCiclo.Int32)
+		pesquisa.IDCiclo = &v
+	}
+	if setorNome.Valid {
+		pesquisa.Setor = &entity.Setor{
+			ID:        pesquisa.IDSetor,
+			IDEmpresa: pesquisa.IDEmpresa,
+			NomeSetor: setorNome.String,
+			Descricao: setorDesc.String,
+		}
+	}
+
 	return pesquisa, nil
 }
 
@@ -150,12 +190,14 @@ func (r *PesquisaRepository) GetByLinkAcesso(ctx context.Context, link string) (
 // Ordenadas por data de criação decrescente
 func (r *PesquisaRepository) ListByEmpresa(ctx context.Context, empresaID int) ([]*entity.Pesquisa, error) {
 	query := `
-        SELECT id_pesquisa, id_empresa, id_user_admin, id_setor, titulo, descricao,
-               data_criacao, data_abertura, data_fechamento, status, link_acesso,
-               qrcode_path, config_recorrencia, anonimato, id_ciclo
-        FROM pesquisa
-        WHERE id_empresa = $1
-        ORDER BY data_criacao DESC
+        SELECT p.id_pesquisa, p.id_empresa, p.id_user_admin, p.id_setor, p.titulo, p.descricao,
+               p.data_criacao, p.data_abertura, p.data_fechamento, p.status, p.link_acesso,
+               p.qrcode_path, p.config_recorrencia, p.anonimato, p.id_ciclo,
+               s.nome_setor, s.descricao
+        FROM pesquisa p
+        LEFT JOIN setor s ON p.id_setor = s.id_setor
+        WHERE p.id_empresa = $1
+        ORDER BY p.data_criacao DESC
     `
 
 	rows, err := r.db.QueryContext(ctx, query, empresaID)
@@ -170,6 +212,7 @@ func (r *PesquisaRepository) ListByEmpresa(ctx context.Context, empresaID int) (
 	for rows.Next() {
 		pesquisa := &entity.Pesquisa{}
 		var nullCiclo sql.NullInt32
+		var setorNome, setorDesc sql.NullString
 		err := rows.Scan(
 			&pesquisa.ID,
 			&pesquisa.IDEmpresa,
@@ -186,6 +229,8 @@ func (r *PesquisaRepository) ListByEmpresa(ctx context.Context, empresaID int) (
 			&pesquisa.ConfigRecorrencia,
 			&pesquisa.Anonimato,
 			&nullCiclo,
+			&setorNome,
+			&setorDesc,
 		)
 		if err != nil {
 			r.logger.Error("erro ao escanear pesquisa: %v", err)
@@ -194,6 +239,14 @@ func (r *PesquisaRepository) ListByEmpresa(ctx context.Context, empresaID int) (
 		if nullCiclo.Valid {
 			v := int(nullCiclo.Int32)
 			pesquisa.IDCiclo = &v
+		}
+		if setorNome.Valid {
+			pesquisa.Setor = &entity.Setor{
+				ID:        pesquisa.IDSetor,
+				IDEmpresa: pesquisa.IDEmpresa,
+				NomeSetor: setorNome.String,
+				Descricao: setorDesc.String,
+			}
 		}
 		pesquisas = append(pesquisas, pesquisa)
 	}
@@ -210,12 +263,14 @@ func (r *PesquisaRepository) ListByEmpresa(ctx context.Context, empresaID int) (
 // Ordenadas por data de criação decrescente
 func (r *PesquisaRepository) ListBySetor(ctx context.Context, setorID int) ([]*entity.Pesquisa, error) {
 	query := `
-        SELECT id_pesquisa, id_empresa, id_user_admin, id_setor, titulo, descricao,
-               data_criacao, data_abertura, data_fechamento, status, link_acesso,
-               qrcode_path, config_recorrencia, anonimato, id_ciclo
-        FROM pesquisa
-        WHERE id_setor = $1
-        ORDER BY data_criacao DESC
+        SELECT p.id_pesquisa, p.id_empresa, p.id_user_admin, p.id_setor, p.titulo, p.descricao,
+               p.data_criacao, p.data_abertura, p.data_fechamento, p.status, p.link_acesso,
+               p.qrcode_path, p.config_recorrencia, p.anonimato, p.id_ciclo,
+               s.nome_setor, s.descricao
+        FROM pesquisa p
+        LEFT JOIN setor s ON p.id_setor = s.id_setor
+        WHERE p.id_setor = $1
+        ORDER BY p.data_criacao DESC
     `
 
 	rows, err := r.db.QueryContext(ctx, query, setorID)
@@ -230,6 +285,7 @@ func (r *PesquisaRepository) ListBySetor(ctx context.Context, setorID int) ([]*e
 	for rows.Next() {
 		pesquisa := &entity.Pesquisa{}
 		var nullCiclo sql.NullInt32
+		var setorNome, setorDesc sql.NullString
 		err := rows.Scan(
 			&pesquisa.ID,
 			&pesquisa.IDEmpresa,
@@ -246,6 +302,8 @@ func (r *PesquisaRepository) ListBySetor(ctx context.Context, setorID int) ([]*e
 			&pesquisa.ConfigRecorrencia,
 			&pesquisa.Anonimato,
 			&nullCiclo,
+			&setorNome,
+			&setorDesc,
 		)
 		if err != nil {
 			r.logger.Error("erro ao escanear pesquisa: %v", err)
@@ -254,6 +312,14 @@ func (r *PesquisaRepository) ListBySetor(ctx context.Context, setorID int) ([]*e
 		if nullCiclo.Valid {
 			v := int(nullCiclo.Int32)
 			pesquisa.IDCiclo = &v
+		}
+		if setorNome.Valid {
+			pesquisa.Setor = &entity.Setor{
+				ID:        pesquisa.IDSetor,
+				IDEmpresa: pesquisa.IDEmpresa,
+				NomeSetor: setorNome.String,
+				Descricao: setorDesc.String,
+			}
 		}
 		pesquisas = append(pesquisas, pesquisa)
 	}
@@ -270,12 +336,14 @@ func (r *PesquisaRepository) ListBySetor(ctx context.Context, setorID int) ([]*e
 // Status podem ser: Rascunho, Ativa, Pausada, Encerrada, Arquivada
 func (r *PesquisaRepository) ListByStatus(ctx context.Context, empresaID int, status string) ([]*entity.Pesquisa, error) {
 	query := `
-        SELECT id_pesquisa, id_empresa, id_user_admin, id_setor, titulo, descricao,
-               data_criacao, data_abertura, data_fechamento, status, link_acesso,
-               qrcode_path, config_recorrencia, anonimato, id_ciclo
-        FROM pesquisa
-        WHERE id_empresa = $1 AND status = $2
-        ORDER BY data_criacao DESC
+        SELECT p.id_pesquisa, p.id_empresa, p.id_user_admin, p.id_setor, p.titulo, p.descricao,
+               p.data_criacao, p.data_abertura, p.data_fechamento, p.status, p.link_acesso,
+               p.qrcode_path, p.config_recorrencia, p.anonimato, p.id_ciclo,
+               s.nome_setor, s.descricao
+        FROM pesquisa p
+        LEFT JOIN setor s ON p.id_setor = s.id_setor
+        WHERE p.id_empresa = $1 AND p.status = $2
+        ORDER BY p.data_criacao DESC
     `
 
 	rows, err := r.db.QueryContext(ctx, query, empresaID, status)
@@ -290,6 +358,7 @@ func (r *PesquisaRepository) ListByStatus(ctx context.Context, empresaID int, st
 	for rows.Next() {
 		pesquisa := &entity.Pesquisa{}
 		var nullCiclo sql.NullInt32
+		var setorNome, setorDesc sql.NullString
 		err := rows.Scan(
 			&pesquisa.ID,
 			&pesquisa.IDEmpresa,
@@ -306,6 +375,8 @@ func (r *PesquisaRepository) ListByStatus(ctx context.Context, empresaID int, st
 			&pesquisa.ConfigRecorrencia,
 			&pesquisa.Anonimato,
 			&nullCiclo,
+			&setorNome,
+			&setorDesc,
 		)
 		if err != nil {
 			r.logger.Error("erro ao escanear pesquisa: %v", err)
@@ -314,6 +385,14 @@ func (r *PesquisaRepository) ListByStatus(ctx context.Context, empresaID int, st
 		if nullCiclo.Valid {
 			v := int(nullCiclo.Int32)
 			pesquisa.IDCiclo = &v
+		}
+		if setorNome.Valid {
+			pesquisa.Setor = &entity.Setor{
+				ID:        pesquisa.IDSetor,
+				IDEmpresa: pesquisa.IDEmpresa,
+				NomeSetor: setorNome.String,
+				Descricao: setorDesc.String,
+			}
 		}
 		pesquisas = append(pesquisas, pesquisa)
 	}
@@ -330,14 +409,16 @@ func (r *PesquisaRepository) ListByStatus(ctx context.Context, empresaID int, st
 // Considera apenas pesquisas com status 'Ativa'
 func (r *PesquisaRepository) ListActive(ctx context.Context, empresaID int) ([]*entity.Pesquisa, error) {
 	query := `
-        SELECT id_pesquisa, id_empresa, id_user_admin, id_setor, titulo, descricao,
-               data_criacao, data_abertura, data_fechamento, status, link_acesso,
-               qrcode_path, config_recorrencia, anonimato, id_ciclo
-        FROM pesquisa
-        WHERE id_empresa = $1 AND status = 'Ativa'
-        AND (data_abertura IS NULL OR data_abertura <= NOW())
-        AND (data_fechamento IS NULL OR data_fechamento > NOW())
-        ORDER BY data_criacao DESC
+        SELECT p.id_pesquisa, p.id_empresa, p.id_user_admin, p.id_setor, p.titulo, p.descricao,
+               p.data_criacao, p.data_abertura, p.data_fechamento, p.status, p.link_acesso,
+               p.qrcode_path, p.config_recorrencia, p.anonimato, p.id_ciclo,
+               s.nome_setor, s.descricao
+        FROM pesquisa p
+        LEFT JOIN setor s ON p.id_setor = s.id_setor
+        WHERE p.id_empresa = $1 AND p.status = 'Ativa'
+        AND (p.data_abertura IS NULL OR p.data_abertura <= NOW())
+        AND (p.data_fechamento IS NULL OR p.data_fechamento > NOW())
+        ORDER BY p.data_criacao DESC
     `
 
 	rows, err := r.db.QueryContext(ctx, query, empresaID)
@@ -352,6 +433,7 @@ func (r *PesquisaRepository) ListActive(ctx context.Context, empresaID int) ([]*
 	for rows.Next() {
 		pesquisa := &entity.Pesquisa{}
 		var nullCiclo sql.NullInt32
+		var setorNome, setorDesc sql.NullString
 		err := rows.Scan(
 			&pesquisa.ID,
 			&pesquisa.IDEmpresa,
@@ -368,6 +450,8 @@ func (r *PesquisaRepository) ListActive(ctx context.Context, empresaID int) ([]*
 			&pesquisa.ConfigRecorrencia,
 			&pesquisa.Anonimato,
 			&nullCiclo,
+			&setorNome,
+			&setorDesc,
 		)
 		if err != nil {
 			r.logger.Error("erro ao escanear pesquisa: %v", err)
@@ -376,6 +460,14 @@ func (r *PesquisaRepository) ListActive(ctx context.Context, empresaID int) ([]*
 		if nullCiclo.Valid {
 			v := int(nullCiclo.Int32)
 			pesquisa.IDCiclo = &v
+		}
+		if setorNome.Valid {
+			pesquisa.Setor = &entity.Setor{
+				ID:        pesquisa.IDSetor,
+				IDEmpresa: pesquisa.IDEmpresa,
+				NomeSetor: setorNome.String,
+				Descricao: setorDesc.String,
+			}
 		}
 		pesquisas = append(pesquisas, pesquisa)
 	}

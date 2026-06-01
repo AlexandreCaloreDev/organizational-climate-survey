@@ -199,7 +199,6 @@ const PesquisasPage = () => {
               cicloName={p.id_ciclo ? ciclos[p.id_ciclo] : undefined}
               onViewDetails={() => {
                 setSelectedSurvey(p);
-                setIsDialogOpen(true);
               }}
               onGenerateLink={handleGenerateLink}
               onDelete={handleDelete}

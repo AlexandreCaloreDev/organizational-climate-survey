@@ -540,7 +540,7 @@ func (h *PesquisaHandler) getClientIP(r *http.Request) string {
 
 // toPesquisaResponse converte entidade de domínio para DTO de resposta
 func (h *PesquisaHandler) toPesquisaResponse(pesquisa *entity.Pesquisa) *response.PesquisaResponse {
-	return &response.PesquisaResponse{
+	resp := &response.PesquisaResponse{
 		ID:             pesquisa.ID,
 		IDEmpresa:      pesquisa.IDEmpresa,
 		IDSetor:        pesquisa.IDSetor,
@@ -555,6 +555,16 @@ func (h *PesquisaHandler) toPesquisaResponse(pesquisa *entity.Pesquisa) *respons
 		Anonimato:      pesquisa.Anonimato,
 		IDCiclo:        pesquisa.IDCiclo,
 	}
+
+	if pesquisa.Setor != nil {
+		resp.Setor = &response.SetorResponse{
+			ID:        pesquisa.Setor.ID,
+			NomeSetor: pesquisa.Setor.NomeSetor,
+			Descricao: pesquisa.Setor.Descricao,
+		}
+	}
+
+	return resp
 }
 
 // RegisterRoutes registra todas as rotas HTTP do handler no roteador

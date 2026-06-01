@@ -24,6 +24,7 @@ type PesquisaCreateRequest struct {
 	Anonimato         bool    `json:"anonimato" example:"true"`                                                           // Indica se as respostas são anônimas
 	DataAbertura      *string `json:"data_abertura,omitempty" example:"2026-01-10T09:00:00Z"`                             // Data de início no formato RFC3339 (opcional)
 	DataFechamento    *string `json:"data_fechamento,omitempty" example:"2026-01-31T23:59:59Z"`                           // Data de término no formato RFC3339 (opcional)
+	IDCiclo           *int    `json:"id_ciclo,omitempty" example:"1"`                                                     // ID do ciclo de avaliação (opcional)
 }
 
 // PesquisaUpdateRequest representa os campos permitidos para atualização parcial de uma pesquisa existente.
@@ -34,6 +35,7 @@ type PesquisaUpdateRequest struct {
 	ConfigRecorrencia *string `json:"config_recorrencia,omitempty" example:"semanal"`                                                    // Atualização da configuração de recorrência (opcional)
 	DataAbertura      *string `json:"data_abertura,omitempty" example:"2026-02-01T09:00:00Z"`                                            // Nova data de abertura no formato RFC3339 (opcional)
 	DataFechamento    *string `json:"data_fechamento,omitempty" example:"2026-02-07T23:59:59Z"`                                          // Nova data de fechamento no formato RFC3339 (opcional)
+	IDCiclo           *int    `json:"id_ciclo,omitempty" example:"1"`                                                                    // ID do ciclo de avaliação (opcional)
 }
 
 // ToEntity converte a requisição de criação em uma entidade de domínio Pesquisa,
@@ -48,6 +50,7 @@ func (r *PesquisaCreateRequest) ToEntity() (*entity.Pesquisa, error) {
 		Status:            r.Status,
 		ConfigRecorrencia: r.ConfigRecorrencia,
 		Anonimato:         r.Anonimato,
+		IDCiclo:           r.IDCiclo,
 	}
 
 	if r.DataAbertura != nil {
@@ -83,6 +86,9 @@ func (r *PesquisaUpdateRequest) ApplyToEntity(pesquisa *entity.Pesquisa) error {
 	}
 	if r.ConfigRecorrencia != nil {
 		pesquisa.ConfigRecorrencia = r.ConfigRecorrencia
+	}
+	if r.IDCiclo != nil {
+		pesquisa.IDCiclo = r.IDCiclo
 	}
 
 	if r.DataAbertura != nil {

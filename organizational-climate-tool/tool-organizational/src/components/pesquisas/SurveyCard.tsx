@@ -132,7 +132,12 @@ export const SurveyCard = ({
         <CardFooter className="flex justify-between items-center text-sm text-muted-foreground">
           <div className="flex flex-col">
             <span>Criado em: {creationDate}</span>
-            {cicloName && <span className="text-xs text-blue-600 mt-1 font-medium">Ciclo: {cicloName}</span>}
+            {cicloName && (
+              <span className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100 w-fit">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                Ciclo: {cicloName}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Button
