@@ -40,7 +40,7 @@ const Sidebar = () => {
   return (
     <aside
       className={cn(
-        "bg-background text-foreground h-screen p-3 border-r flex flex-col sticky top-0 left-0 z-40",
+        "bg-background text-foreground h-screen p-3 border-r flex flex-col sticky top-0 left-0 z-40 print:hidden",
         "w-[72px] hover:w-64 transition-all duration-300 ease-in-out group"
       )}
     >

@@ -6,6 +6,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Pie,
   PieChart,
   Radar,
@@ -17,6 +18,7 @@ import {
   YAxis,
   ResponsiveContainer,
 } from "recharts";
+import { RadarComparativo } from "@/components/analytics/RadarComparativo";
 import {
   Card,
   CardContent,
@@ -62,6 +64,7 @@ import {
 } from "@/lib/buildSurveyResults";
 import {
   buildContextoEmpresaSetores,
+  parseSetorNome,
   estimarRespondentesUnicos,
   formatTipoLabel,
   isEscolhaUnica,
@@ -145,7 +148,11 @@ function EscolhaVisual({
         <ChartContainer config={pieConfig} className="h-[220px] w-full">
           <PieChart>
             <ChartTooltip content={<ChartTooltipContent />} />
-            <Pie data={chartData} dataKey="valor" nameKey="nome" innerRadius={45} />
+            <Pie data={chartData} dataKey="valor" nameKey="nome" innerRadius={45}>
+              {chartData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.fill} />
+              ))}
+            </Pie>
           </PieChart>
         </ChartContainer>
       ) : (
@@ -467,10 +474,47 @@ const RelatorioPage = () => {
     load();
   }, [surveyId, cycleIdParam]);
 
-  const contexto = useMemo(
-    () => buildContextoEmpresaSetores(setoresCadastro, survey?.setor?.nome_setor),
-    [setoresCadastro, survey]
-  );
+  const contexto = useMemo(() => {
+    let setoresList: string[] = [];
+    if (surveyId === "todos") {
+      const cicloId = Number(cycleIdParam);
+      const pesquisasDoCiclo = pesquisas.filter(p => p.id_ciclo === cicloId);
+      const nomes = pesquisasDoCiclo.map(p => p.setor?.nome_setor).filter(Boolean) as string[];
+      const parsed = nomes.map(parseSetorNome);
+      setoresList = [...new Set(parsed.map(p => p.setor).filter(Boolean))];
+    } else {
+      if (survey?.setor?.nome_setor) {
+        const parsed = parseSetorNome(survey.setor.nome_setor);
+        setoresList = [parsed.setor];
+      }
+    }
+
+    let empresaAvaliada: string | null = null;
+    if (survey?.setor?.nome_setor) {
+      empresaAvaliada = parseSetorNome(survey.setor.nome_setor).empresa;
+    }
+    if (!empresaAvaliada && surveyId === "todos") {
+      const cicloId = Number(cycleIdParam);
+      const pesquisasDoCiclo = pesquisas.filter(p => p.id_ciclo === cicloId);
+      for (const p of pesquisasDoCiclo) {
+        if (p.setor?.nome_setor) {
+          const emp = parseSetorNome(p.setor.nome_setor).empresa;
+          if (emp) {
+            empresaAvaliada = emp;
+            break;
+          }
+        }
+      }
+    }
+    if (!empresaAvaliada) {
+      empresaAvaliada = user?.razao_social || "Empresa de teste";
+    }
+
+    return {
+      empresaAvaliada,
+      setoresList,
+    };
+  }, [surveyId, cycleIdParam, pesquisas, survey, user]);
 
   const pessoasResponderam = useMemo(() => estimarRespondentesUnicos(tableResults), [tableResults]);
 
@@ -524,6 +568,27 @@ const RelatorioPage = () => {
       })),
     [eixosNR17]
   );
+
+  const radarComparativoData = useMemo(() => {
+    if (surveyId !== "todos" || eixosPorSetor.length <= 1) return [];
+    const EIXOS_NR17_NAMES = [
+      "Demandas do Trabalho",
+      "Autonomia e Controle",
+      "Apoio da Chefia",
+      "Apoio dos Colegas",
+      "Relacionamentos",
+      "Comunicação e Mudanças",
+      "Clareza de Papéis"
+    ];
+    return EIXOS_NR17_NAMES.map((nome) => {
+      const row: Record<string, any> = { categoria: nome };
+      eixosPorSetor.forEach(({ setor, eixos }) => {
+        const match = eixos.find(e => e.nome === nome);
+        row[setor] = match && match.total > 0 ? match.pct : 0;
+      });
+      return row;
+    });
+  }, [surveyId, eixosPorSetor]);
 
   const proximaAvaliacao = useMemo(() => {
     const base = survey?.data_fechamento || survey?.data_criacao;
@@ -755,32 +820,36 @@ const RelatorioPage = () => {
                 </div>
               ))}
             </div>
-            {radarData.some((r) => r.pct > 0) && (
+            {(surveyId === "todos" || radarData.some((r) => r.pct > 0)) && (
               <div className="w-full min-h-[320px] print:min-h-[350px]">
-                <ResponsiveContainer width="100%" height={350}>
-                  <RadarChart data={radarData} outerRadius="80%">
-                    <PolarGrid stroke="#e2e8f0" />
-                    <PolarAngleAxis
-                      dataKey="eixo"
-                      tick={{ fontSize: 11, fill: "#64748b" }}
-                      tickLine={false}
-                    />
-                    <PolarRadiusAxis
-                      domain={[0, 100]}
-                      tick={{ fontSize: 9, fill: "#94a3b8" }}
-                      axisLine={false}
-                      tickCount={5}
-                    />
-                    <Radar
-                      dataKey="pct"
-                      fill="#2B7FFF"
-                      fillOpacity={0.25}
-                      stroke="#2B7FFF"
-                      strokeWidth={2}
-                      dot={{ r: 4, fill: "#2B7FFF", strokeWidth: 0 }}
-                    />
-                  </RadarChart>
-                </ResponsiveContainer>
+                {surveyId === "todos" && eixosPorSetor.length > 1 ? (
+                  <RadarComparativo data={radarComparativoData} />
+                ) : (
+                  <ResponsiveContainer width="100%" height={350}>
+                    <RadarChart data={radarData} outerRadius="80%">
+                      <PolarGrid stroke="#e2e8f0" />
+                      <PolarAngleAxis
+                        dataKey="eixo"
+                        tick={{ fontSize: 11, fill: "#64748b" }}
+                        tickLine={false}
+                      />
+                      <PolarRadiusAxis
+                        domain={[0, 100]}
+                        tick={{ fontSize: 9, fill: "#94a3b8" }}
+                        axisLine={false}
+                        tickCount={5}
+                      />
+                      <Radar
+                        dataKey="pct"
+                        fill="#2B7FFF"
+                        fillOpacity={0.25}
+                        stroke="#2B7FFF"
+                        strokeWidth={2}
+                        dot={{ r: 4, fill: "#2B7FFF", strokeWidth: 0 }}
+                      />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                )}
               </div>
             )}
           </div>
@@ -851,7 +920,7 @@ const RelatorioPage = () => {
                 );
                 return (
                   <TableRow key={item.id + item.tipo_pergunta}>
-                    <TableCell className="font-medium max-w-[180px]">{item.texto_pergunta || "—"}</TableCell>
+                    <TableCell className="font-medium max-w-[350px] whitespace-normal break-words">{item.texto_pergunta || "—"}</TableCell>
                     <TableCell>{formatTipoLabel(item.tipo_pergunta)}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="text-[10px]">{dimensao}</Badge>

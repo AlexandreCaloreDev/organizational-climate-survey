@@ -549,23 +549,6 @@ func (r *PesquisaRepository) UpdateStatus(ctx context.Context, id int, status st
 // Delete remove uma pesquisa do banco de dados ou arquiva se houver respostas
 // Verifica dependências antes da deleção
 func (r *PesquisaRepository) Delete(ctx context.Context, id int) error {
-	var count int
-	checkQuery := `
-        SELECT COUNT(*) 
-        FROM resposta r
-        INNER JOIN pergunta p ON r.id_pergunta = p.id_pergunta
-        WHERE p.id_pesquisa = $1
-    `
-	err := r.db.QueryRowContext(ctx, checkQuery, id).Scan(&count)
-	if err != nil {
-		r.logger.Error("erro ao verificar dependências pesquisa ID=%d: %v", id, err)
-		return fmt.Errorf("erro ao verificar dependências: %v", err)
-	}
-
-	if count > 0 {
-		return r.UpdateStatus(ctx, id, "Arquivada")
-	}
-
 	query := `DELETE FROM pesquisa WHERE id_pesquisa = $1`
 	result, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {

@@ -35,7 +35,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     return (
         <div className="flex w-full min-h-screen bg-muted/40">
             <Sidebar />
-            <main className="flex-1 p-4 md:p-8">
+            <main className="flex-1 p-4 md:p-8 print:p-0">
                 {children}
             </main>
         </div>

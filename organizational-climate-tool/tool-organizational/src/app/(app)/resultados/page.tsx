@@ -156,8 +156,10 @@ function AnalyticsDashboardContent() {
           <div className="w-full sm:w-[180px]">
             <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Ciclo de Avaliação</label>
             <Select value={cicloSelecionado} onValueChange={handleFiltroCicloChange}>
-              <SelectTrigger className="bg-slate-50 border-slate-200 hover:bg-slate-100 transition-colors">
-                <SelectValue placeholder="Selecione o Ciclo" />
+              <SelectTrigger className="bg-slate-50 border-slate-200 hover:bg-slate-100 transition-colors w-full overflow-hidden">
+                <span className="truncate pr-4 block text-left w-full">
+                  <SelectValue placeholder="Selecione o Ciclo" />
+                </span>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos" className="font-semibold text-blue-600">Todos os Períodos</SelectItem>
@@ -171,8 +173,10 @@ function AnalyticsDashboardContent() {
           <div className="w-full sm:w-[220px]">
             <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Pesquisa Específica</label>
             <Select value={pesquisaSelecionada} onValueChange={handleFiltroPesquisaChange}>
-              <SelectTrigger className="bg-slate-50 border-slate-200 hover:bg-slate-100 transition-colors">
-                <SelectValue placeholder="Selecione a Pesquisa" />
+              <SelectTrigger className="bg-slate-50 border-slate-200 hover:bg-slate-100 transition-colors w-full overflow-hidden">
+                <span className="truncate pr-4 block text-left w-full">
+                  <SelectValue placeholder="Selecione a Pesquisa" />
+                </span>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos" className="font-semibold text-blue-600">Todas as Pesquisas</SelectItem>

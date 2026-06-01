@@ -261,9 +261,9 @@ export type EixoNR17 = {
 const EIXOS_NR17_REGEX: { nome: string; regex: RegExp }[] = [
   { nome: "Demandas do Trabalho", regex: /demanda|carga|ritmo|press[aã]o|sobrecarga/i },
   { nome: "Autonomia e Controle", regex: /autonomia|controle|decis[aã]o|liberdade/i },
-  { nome: "Apoio da Chefia", regex: /chefia|lideran[cç]a|gestor|supervisor/i },
-  { nome: "Apoio dos Colegas", regex: /colega|equipe|par\b|apoio m[uú]tuo|coopera/i },
-  { nome: "Relacionamentos", regex: /relacionamento|conviv[eê]ncia|clima|ass[eé]dio|harassment/i },
+  { nome: "Apoio da Chefia", regex: /chefia|lideran[cç]a|gestor|supervisor|chefe|lider|líder/i },
+  { nome: "Apoio dos Colegas", regex: /colega|equipe|par\b|apoio m[uú]tuo|coopera|coleg|trabalho/i },
+  { nome: "Relacionamentos", regex: /relacionamento|conviv[eê]ncia|clima|ass[eé]dio|harassment|satisfei|satisfa|sistema/i },
   { nome: "Comunicação e Mudanças", regex: /comunica[cç][aã]o|informa[cç][aã]o|mudan[cç]a|transpar[eê]ncia/i },
   { nome: "Clareza de Papéis", regex: /papel|pap[eé]is|fun[cç][aã]o|responsabilidade|raci|escopo/i },
 ];

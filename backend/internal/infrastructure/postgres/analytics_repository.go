@@ -20,7 +20,7 @@ func (r *AnalyticsRepository) GetScoresGlobaisPorCiclo(ctx context.Context, idEm
 	query := `
 		SELECT 
 			p.tipo_pergunta AS categoria, 
-			AVG(CAST(r.valor_resposta AS FLOAT)) * 20 AS score
+			AVG(CAST(r.valor_resposta AS FLOAT)) * 10 AS score
 		FROM resposta r
 		JOIN pergunta p ON r.id_pergunta = p.id_pergunta
 		JOIN pesquisa pesq ON p.id_pesquisa = pesq.id_pesquisa
@@ -58,7 +58,7 @@ func (r *AnalyticsRepository) GetRadarSetores(ctx context.Context, idEmpresa int
 		SELECT 
 			s.nome_setor,
 			p.tipo_pergunta AS categoria, 
-			AVG(CAST(r.valor_resposta AS FLOAT)) * 20 AS score
+			AVG(CAST(r.valor_resposta AS FLOAT)) * 10 AS score
 		FROM resposta r
 		JOIN pergunta p ON r.id_pergunta = p.id_pergunta
 		JOIN pesquisa pesq ON p.id_pesquisa = pesq.id_pesquisa
@@ -103,7 +103,7 @@ func (r *AnalyticsRepository) GetHeatmapGlobal(ctx context.Context, idEmpresa in
 		SELECT 
 			s.nome_setor,
 			p.tipo_pergunta AS categoria, 
-			AVG(CAST(r.valor_resposta AS FLOAT)) * 20 AS score
+			AVG(CAST(r.valor_resposta AS FLOAT)) * 10 AS score
 		FROM resposta r
 		JOIN pergunta p ON r.id_pergunta = p.id_pergunta
 		JOIN pesquisa pesq ON p.id_pesquisa = pesq.id_pesquisa
@@ -161,7 +161,7 @@ func (r *AnalyticsRepository) GetRiscosGlobais(ctx context.Context, idEmpresa in
 		  AND (r.id_submissao IS NULL OR sp.status IN ('completa', 'pendente'))
 		  AND r.valor_resposta ~ '^[0-9\.]+$'
 		GROUP BY p.tipo_pergunta
-		HAVING AVG(CAST(r.valor_resposta AS FLOAT)) * 20 < 60
+		HAVING AVG(CAST(r.valor_resposta AS FLOAT)) * 10 < 60
 		LIMIT 5
 	`
 	rows, err := r.db.QueryContext(ctx, query, idEmpresa, ciclo)
@@ -185,7 +185,7 @@ func (r *AnalyticsRepository) GetScoresSetorPorCiclo(ctx context.Context, idEmpr
 	query := `
 		SELECT 
 			p.tipo_pergunta AS categoria, 
-			AVG(CAST(r.valor_resposta AS FLOAT)) * 20 AS score
+			AVG(CAST(r.valor_resposta AS FLOAT)) * 10 AS score
 		FROM resposta r
 		JOIN pergunta p ON r.id_pergunta = p.id_pergunta
 		JOIN pesquisa pesq ON p.id_pesquisa = pesq.id_pesquisa
@@ -219,7 +219,7 @@ func (r *AnalyticsRepository) GetHistoricoSetor(ctx context.Context, idEmpresa i
 		SELECT 
 			pesq.titulo AS ciclo,
 			p.tipo_pergunta AS categoria, 
-			AVG(CAST(r.valor_resposta AS FLOAT)) * 20 AS score
+			AVG(CAST(r.valor_resposta AS FLOAT)) * 10 AS score
 		FROM resposta r
 		JOIN pergunta p ON r.id_pergunta = p.id_pergunta
 		JOIN pesquisa pesq ON p.id_pesquisa = pesq.id_pesquisa
@@ -268,7 +268,7 @@ func (r *AnalyticsRepository) GetHistoricoEmpresaGlobal(ctx context.Context, idE
 		SELECT 
 			pesq.titulo AS ciclo,
 			p.tipo_pergunta AS categoria, 
-			AVG(CAST(r.valor_resposta AS FLOAT)) * 20 AS score
+			AVG(CAST(r.valor_resposta AS FLOAT)) * 10 AS score
 		FROM resposta r
 		JOIN pergunta p ON r.id_pergunta = p.id_pergunta
 		JOIN pesquisa pesq ON p.id_pesquisa = pesq.id_pesquisa
@@ -326,7 +326,7 @@ func (r *AnalyticsRepository) GetRiscosSetor(ctx context.Context, idEmpresa int,
 		  AND (r.id_submissao IS NULL OR sp.status IN ('completa', 'pendente'))
 		  AND r.valor_resposta ~ '^[0-9\.]+$'
 		GROUP BY p.tipo_pergunta
-		HAVING AVG(CAST(r.valor_resposta AS FLOAT)) * 20 < 60
+		HAVING AVG(CAST(r.valor_resposta AS FLOAT)) * 10 < 60
 		LIMIT 5
 	`
 	rows, err := r.db.QueryContext(ctx, query, idEmpresa, idSetor, ciclo)

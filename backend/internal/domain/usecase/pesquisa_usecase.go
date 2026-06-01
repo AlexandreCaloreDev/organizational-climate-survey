@@ -429,15 +429,6 @@ func (uc *PesquisaUseCase) Delete(ctx context.Context, id int, userAdminID int, 
 		return fmt.Errorf("pesquisa não encontrada: %v", err)
 	}
 
-	// Não permite deletar pesquisa ativa
-	if pesquisa.Status == "Ativa" {
-		return fmt.Errorf("não é possível deletar pesquisa ativa. Encerre-a primeiro")
-	}
-
-	// Não permite deletar pesquisa concluída com respostas
-	if pesquisa.Status == "Concluída" {
-		return fmt.Errorf("não é possível deletar pesquisa concluída. Arquive-a se necessário")
-	}
 
 	if err := uc.pesquisaRepo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("erro ao deletar pesquisa: %v", err)

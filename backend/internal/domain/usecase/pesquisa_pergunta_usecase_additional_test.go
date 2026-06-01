@@ -114,10 +114,14 @@ func TestPesquisaUseCaseDeleteAndAccessValidations(t *testing.T) {
 	}
 
 	uc := NewPesquisaUseCase(pesquisaRepo, empresaRepo, setorRepo, dashboardRepo, logRepo)
-	if err := uc.Delete(context.Background(), 1, 10, "127.0.0.1"); err == nil {
-		t.Fatal("expected delete rejection for active survey")
+	if err := uc.Delete(context.Background(), 1, 10, "127.0.0.1"); err != nil {
+		t.Fatalf("unexpected delete error for active survey: %v", err)
+	}
+	if !deleted {
+		t.Fatal("expected delete repository call for active survey")
 	}
 
+	deleted = false
 	if err := uc.Delete(context.Background(), 2, 10, "127.0.0.1"); err != nil {
 		t.Fatalf("unexpected delete error: %v", err)
 	}
