@@ -27,7 +27,7 @@ func (r *AnalyticsRepository) GetScoresGlobaisPorCiclo(ctx context.Context, idEm
 		LEFT JOIN submissao_pesquisa sp ON r.id_submissao = sp.id_submissao
 		WHERE pesq.id_empresa = $1 
 		  AND ($2 = 'todos' OR pesq.id_ciclo::TEXT = $2)
-		  AND (r.id_submissao IS NULL OR sp.status = 'completa')
+		  AND (r.id_submissao IS NULL OR sp.status IN ('completa', 'pendente'))
 		  AND r.valor_resposta ~ '^[0-9\.]+$'
 		GROUP BY p.tipo_pergunta
 	`
@@ -66,7 +66,7 @@ func (r *AnalyticsRepository) GetRadarSetores(ctx context.Context, idEmpresa int
 		JOIN setor s ON pesq.id_setor = s.id_setor
 		WHERE pesq.id_empresa = $1 
 		  AND ($2 = 'todos' OR pesq.id_ciclo::TEXT = $2)
-		  AND (r.id_submissao IS NULL OR sp.status = 'completa')
+		  AND (r.id_submissao IS NULL OR sp.status IN ('completa', 'pendente'))
 		  AND r.valor_resposta ~ '^[0-9\.]+$'
 		GROUP BY s.nome_setor, p.tipo_pergunta
 	`
@@ -111,7 +111,7 @@ func (r *AnalyticsRepository) GetHeatmapGlobal(ctx context.Context, idEmpresa in
 		JOIN setor s ON pesq.id_setor = s.id_setor
 		WHERE pesq.id_empresa = $1 
 		  AND ($2 = 'todos' OR pesq.id_ciclo::TEXT = $2)
-		  AND (r.id_submissao IS NULL OR sp.status = 'completa')
+		  AND (r.id_submissao IS NULL OR sp.status IN ('completa', 'pendente'))
 		  AND r.valor_resposta ~ '^[0-9\.]+$'
 		GROUP BY s.nome_setor, p.tipo_pergunta
 	`
@@ -158,7 +158,7 @@ func (r *AnalyticsRepository) GetRiscosGlobais(ctx context.Context, idEmpresa in
 		LEFT JOIN submissao_pesquisa sp ON r.id_submissao = sp.id_submissao
 		WHERE pesq.id_empresa = $1 
 		  AND ($2 = 'todos' OR pesq.id_ciclo::TEXT = $2)
-		  AND (r.id_submissao IS NULL OR sp.status = 'completa')
+		  AND (r.id_submissao IS NULL OR sp.status IN ('completa', 'pendente'))
 		  AND r.valor_resposta ~ '^[0-9\.]+$'
 		GROUP BY p.tipo_pergunta
 		HAVING AVG(CAST(r.valor_resposta AS FLOAT)) * 20 < 60
@@ -192,8 +192,8 @@ func (r *AnalyticsRepository) GetScoresSetorPorCiclo(ctx context.Context, idEmpr
 		LEFT JOIN submissao_pesquisa sp ON r.id_submissao = sp.id_submissao
 		WHERE pesq.id_empresa = $1 
 		  AND pesq.id_setor = $2
-		  AND ($3 = 'todos' OR pesq.titulo ILIKE '%' || $3 || '%')
-		  AND (r.id_submissao IS NULL OR sp.status = 'completa')
+		  AND ($3 = 'todos' OR pesq.id_ciclo::TEXT = $3)
+		  AND (r.id_submissao IS NULL OR sp.status IN ('completa', 'pendente'))
 		  AND r.valor_resposta ~ '^[0-9\.]+$'
 		GROUP BY p.tipo_pergunta
 	`
@@ -226,7 +226,7 @@ func (r *AnalyticsRepository) GetHistoricoSetor(ctx context.Context, idEmpresa i
 		LEFT JOIN submissao_pesquisa sp ON r.id_submissao = sp.id_submissao
 		WHERE pesq.id_empresa = $1 
 		  AND pesq.id_setor = $2
-		  AND (r.id_submissao IS NULL OR sp.status = 'completa')
+		  AND (r.id_submissao IS NULL OR sp.status IN ('completa', 'pendente'))
 		  AND r.valor_resposta ~ '^[0-9\.]+$'
 		GROUP BY pesq.titulo, p.tipo_pergunta
 		ORDER BY pesq.titulo ASC
@@ -274,7 +274,7 @@ func (r *AnalyticsRepository) GetHistoricoEmpresaGlobal(ctx context.Context, idE
 		JOIN pesquisa pesq ON p.id_pesquisa = pesq.id_pesquisa
 		LEFT JOIN submissao_pesquisa sp ON r.id_submissao = sp.id_submissao
 		WHERE pesq.id_empresa = $1 
-		  AND (r.id_submissao IS NULL OR sp.status = 'completa')
+		  AND (r.id_submissao IS NULL OR sp.status IN ('completa', 'pendente'))
 		  AND r.valor_resposta ~ '^[0-9\.]+$'
 		GROUP BY pesq.titulo, p.tipo_pergunta
 		ORDER BY pesq.titulo ASC
@@ -322,8 +322,8 @@ func (r *AnalyticsRepository) GetRiscosSetor(ctx context.Context, idEmpresa int,
 		LEFT JOIN submissao_pesquisa sp ON r.id_submissao = sp.id_submissao
 		WHERE pesq.id_empresa = $1 
 		  AND pesq.id_setor = $2
-		  AND ($3 = 'todos' OR pesq.titulo ILIKE '%' || $3 || '%')
-		  AND (r.id_submissao IS NULL OR sp.status = 'completa')
+		  AND ($3 = 'todos' OR pesq.id_ciclo::TEXT = $3)
+		  AND (r.id_submissao IS NULL OR sp.status IN ('completa', 'pendente'))
 		  AND r.valor_resposta ~ '^[0-9\.]+$'
 		GROUP BY p.tipo_pergunta
 		HAVING AVG(CAST(r.valor_resposta AS FLOAT)) * 20 < 60

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   Bar,
   BarChart,
@@ -244,8 +244,10 @@ function HeatmapCell({ pct }: { pct: number | null }) {
 
 const RelatorioPage = () => {
   const params = useParams();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const surveyId = params.id as string;
+  const cycleIdParam = searchParams.get("ciclo");
   const { user } = useAuth();
 
   const [survey, setSurvey] = useState<any>(null);
@@ -262,70 +264,208 @@ const RelatorioPage = () => {
     const load = async () => {
       if (!surveyId) return;
       setPageLoading(true);
-      const pid = Number(surveyId);
-      try {
-        const pesquisa = await pesquisaService.getById(pid);
-        setSurvey(pesquisa);
 
-        let setoresLocal: { id_setor: number; nome_setor: string }[] = [];
-        if (pesquisa?.id_empresa) {
-          try {
-            const [setoresResponse, ciclosResponse, pesquisasResponse] = await Promise.all([
-              setorService.listByEmpresa(pesquisa.id_empresa),
-              cicloService.listByEmpresa(pesquisa.id_empresa),
-              pesquisaService.listByEmpresa(pesquisa.id_empresa)
-            ]);
-            setoresLocal = setoresResponse;
-            setSetoresCadastro(setoresLocal);
-            setCiclos(ciclosResponse || []);
-            setPesquisas(pesquisasResponse || []);
-
-            if (pesquisa.id_ciclo) {
-              setCicloSelecionado(pesquisa.id_ciclo.toString());
-            } else {
-              setCicloSelecionado("todos");
-            }
-          } catch (e) {
-            console.error("Erro ao carregar filtros auxiliares", e);
-          }
+      if (surveyId === "todos") {
+        if (!cycleIdParam) {
+          router.push("/resultados");
+          return;
         }
+        const cicloId = Number(cycleIdParam);
+        const empresaId = user?.empresa_id ? Number(user.empresa_id) : 1;
 
-        const perguntas = (await pesquisaService.listPerguntas(pid)) || [];
-        let stats: Record<string, Record<string, number>> = {};
-        let dadosProc: Record<string, any> = {};
-        const dashboard = await dashboardService.getByPesquisa(pid);
-        if (dashboard?.id_dashboard) {
-          const dData = await dashboardService.getData(dashboard.id_dashboard);
-          dadosProc = (dData as any)?.dados_processados || {};
-          Object.entries(dadosProc).forEach(([k, v]: [string, any]) => {
-            stats[k.replace("pergunta_", "")] = v?.distribuicao || v?.dados || {};
+        try {
+          const [setoresResponse, ciclosResponse, pesquisasResponse] = await Promise.all([
+            setorService.listByEmpresa(empresaId),
+            cicloService.listByEmpresa(empresaId),
+            pesquisaService.listByEmpresa(empresaId)
+          ]);
+
+          setSetoresCadastro(setoresResponse || []);
+          setCiclos(ciclosResponse || []);
+          setPesquisas(pesquisasResponse || []);
+          setCicloSelecionado(cycleIdParam);
+
+          const currentCycle = (ciclosResponse || []).find(c => c.id_ciclo === cicloId);
+          setSurvey({
+            titulo: currentCycle ? `Relatório Consolidado - ${currentCycle.nome}` : "Relatório Consolidado",
+            descricao: "Resultados agregados de todas as pesquisas e setores deste ciclo de avaliação.",
+            status: "Concluída",
+            data_criacao: new Date().toISOString(),
+            id_empresa: empresaId,
+            id_ciclo: cicloId,
+            participantes: 0,
           });
+
+          const pesquisasDoCiclo = (pesquisasResponse || []).filter(p => p.id_ciclo === cicloId);
+          
+          if (pesquisasDoCiclo.length === 0) {
+            setTableResults([]);
+            setPageLoading(false);
+            return;
+          }
+
+          let totalAlvoParticipantes = 0;
+          pesquisasDoCiclo.forEach(p => {
+            totalAlvoParticipantes += Number((p as any).participantes) || 0;
+          });
+
+          const surveysData = await Promise.all(
+            pesquisasDoCiclo.map(async (p) => {
+              try {
+                const [perguntas, statsRaw] = await Promise.all([
+                  pesquisaService.listPerguntas(p.id_pesquisa),
+                  respostaService.getStatsByPesquisa(p.id_pesquisa).catch(() => ({}))
+                ]);
+                return { perguntas, statsRaw, survey: p };
+              } catch (e) {
+                console.error(`Erro ao carregar dados da pesquisa ${p.id_pesquisa}:`, e);
+                return { perguntas: [], statsRaw: {}, survey: p };
+              }
+            })
+          );
+
+          const aggregatedQuestions: Record<string, {
+            texto_pergunta: string;
+            tipo_pergunta: string;
+            ordem_exibicao: number;
+            id_pergunta_original: number;
+            opcoes_resposta: string;
+            distribuicao: Record<string, number>;
+          }> = {};
+
+          surveysData.forEach(({ perguntas, statsRaw }) => {
+            const stats = statsRaw as Record<string, Record<string, number>>;
+            perguntas.forEach((p: any) => {
+              const normalizedText = p.texto_pergunta.trim().toLowerCase();
+              const qId = String(p.id_pergunta);
+              const dist = stats[qId] || {};
+
+              if (!aggregatedQuestions[normalizedText]) {
+                aggregatedQuestions[normalizedText] = {
+                  texto_pergunta: p.texto_pergunta,
+                  tipo_pergunta: p.tipo_pergunta,
+                  ordem_exibicao: p.ordem_exibicao,
+                  id_pergunta_original: p.id_pergunta,
+                  opcoes_resposta: p.opcoes_resposta || "",
+                  distribuicao: {},
+                };
+              }
+
+              const aq = aggregatedQuestions[normalizedText];
+              Object.entries(dist).forEach(([val, count]) => {
+                aq.distribuicao[val] = (aq.distribuicao[val] || 0) + Number(count);
+              });
+            });
+          });
+
+          const aggregatedPerguntasList = Object.values(aggregatedQuestions).map((aq, index) => ({
+            id_pergunta: aq.id_pergunta_original,
+            texto_pergunta: aq.texto_pergunta,
+            tipo_pergunta: aq.tipo_pergunta,
+            ordem_exibicao: index + 1,
+            opcoes_resposta: aq.opcoes_resposta,
+          }));
+
+          const aggregatedStats: Record<string, Record<string, number>> = {};
+          Object.values(aggregatedQuestions).forEach((aq) => {
+            aggregatedStats[String(aq.id_pergunta_original)] = aq.distribuicao;
+          });
+
+          const results = buildResultsFromPerguntas(aggregatedPerguntasList, aggregatedStats, {});
+          setTableResults(results);
+
+          setSurvey((prev: any) => ({
+            ...prev,
+            participantes: totalAlvoParticipantes,
+          }));
+
+          const eixos = agruparEixosNR17(results);
+          setEixosNR17(eixos);
+
+          const eixosPorSetorList = surveysData.map(({ perguntas, statsRaw, survey }) => {
+            const stats = statsRaw as Record<string, Record<string, number>>;
+            const surveyResults = buildResultsFromPerguntas(perguntas, stats, {});
+            const surveyEixos = agruparEixosNR17(surveyResults);
+            const sectorName = survey.setor?.nome_setor || "Geral";
+            return {
+              setor: sectorName,
+              eixos: surveyEixos,
+            };
+          });
+
+          setEixosPorSetor(eixosPorSetorList);
+
+        } catch (e) {
+          console.error("Erro ao gerar relatório consolidado:", e);
+          setTableResults([]);
         }
-        if (Object.keys(stats).length === 0) {
-          const raw = (await respostaService.getStatsByPesquisa(pid)) as Record<string, Record<string, number>>;
-          Object.entries(raw || {}).forEach(([qId, d]) => { stats[qId] = d || {}; });
+        setPageLoading(false);
+      } else {
+        const pid = Number(surveyId);
+        try {
+          const pesquisa = await pesquisaService.getById(pid);
+          setSurvey(pesquisa);
+
+          let setoresLocal: { id_setor: number; nome_setor: string }[] = [];
+          if (pesquisa?.id_empresa) {
+            try {
+              const [setoresResponse, ciclosResponse, pesquisasResponse] = await Promise.all([
+                setorService.listByEmpresa(pesquisa.id_empresa),
+                cicloService.listByEmpresa(pesquisa.id_empresa),
+                pesquisaService.listByEmpresa(pesquisa.id_empresa)
+              ]);
+              setoresLocal = setoresResponse;
+              setSetoresCadastro(setoresLocal);
+              setCiclos(ciclosResponse || []);
+              setPesquisas(pesquisasResponse || []);
+
+              if (pesquisa.id_ciclo) {
+                setCicloSelecionado(pesquisa.id_ciclo.toString());
+              } else {
+                setCicloSelecionado("todos");
+              }
+            } catch (e) {
+              console.error("Erro ao carregar filtros auxiliares", e);
+            }
+          }
+
+          const perguntas = (await pesquisaService.listPerguntas(pid)) || [];
+          let stats: Record<string, Record<string, number>> = {};
+          let dadosProc: Record<string, any> = {};
+          const dashboard = await dashboardService.getByPesquisa(pid);
+          if (dashboard?.id_dashboard) {
+            const dData = await dashboardService.getData(dashboard.id_dashboard);
+            dadosProc = (dData as any)?.dados_processados || {};
+            Object.entries(dadosProc).forEach(([k, v]: [string, any]) => {
+              stats[k.replace("pergunta_", "")] = v?.distribuicao || v?.dados || {};
+            });
+          }
+          if (Object.keys(stats).length === 0) {
+            const raw = (await respostaService.getStatsByPesquisa(pid)) as Record<string, Record<string, number>>;
+            Object.entries(raw || {}).forEach(([qId, d]) => { stats[qId] = d || {}; });
+          }
+          const results = buildResultsFromPerguntas(perguntas, stats, dadosProc);
+          setTableResults(results);
+
+          const eixos = agruparEixosNR17(results);
+          setEixosNR17(eixos);
+
+          const ctx = buildContextoEmpresaSetores(
+            setoresLocal,
+            pesquisa?.setor?.nome_setor
+          );
+
+          const setorAtualNome = ctx.setoresList[0] || pesquisa?.setor?.nome_setor || "Setor Atual";
+          setEixosPorSetor([{ setor: setorAtualNome, eixos }]);
+        } catch (e) {
+          console.error(e);
+          setTableResults([]);
         }
-        const results = buildResultsFromPerguntas(perguntas, stats, dadosProc);
-        setTableResults(results);
-
-        const eixos = agruparEixosNR17(results);
-        setEixosNR17(eixos);
-
-        const ctx = buildContextoEmpresaSetores(
-          setoresLocal,
-          pesquisa?.setor?.nome_setor
-        );
-
-        const setorAtualNome = ctx.setoresList[0] || pesquisa?.setor?.nome_setor || "Setor Atual";
-        setEixosPorSetor([{ setor: setorAtualNome, eixos }]);
-      } catch (e) {
-        console.error(e);
-        setTableResults([]);
+        setPageLoading(false);
       }
-      setPageLoading(false);
     };
     load();
-  }, [surveyId]);
+  }, [surveyId, cycleIdParam]);
 
   const contexto = useMemo(
     () => buildContextoEmpresaSetores(setoresCadastro, survey?.setor?.nome_setor),

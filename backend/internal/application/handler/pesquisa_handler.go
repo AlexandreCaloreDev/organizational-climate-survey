@@ -393,6 +393,10 @@ func (h *PesquisaHandler) DeletePesquisa(w http.ResponseWriter, r *http.Request)
 			response.WriteError(w, http.StatusConflict, "Pesquisa possui dependências", err.Error())
 			return
 		}
+		if strings.Contains(err.Error(), "não é possível") {
+			response.WriteError(w, http.StatusConflict, "Não é possível excluir a pesquisa", err.Error())
+			return
+		}
 		response.WriteError(w, http.StatusInternalServerError, "Erro interno", err.Error())
 		return
 	}

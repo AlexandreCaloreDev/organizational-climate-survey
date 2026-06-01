@@ -189,9 +189,11 @@ function AnalyticsDashboardContent() {
             onClick={() => {
               if (pesquisaSelecionada !== "todos") {
                 router.push(`/relatorios/${pesquisaSelecionada}`);
+              } else {
+                router.push(`/relatorios/todos?ciclo=${cicloSelecionado}`);
               }
             }}
-            disabled={pesquisaSelecionada === "todos"}
+            disabled={cicloSelecionado === "todos"}
             className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center justify-center gap-2 h-10 px-4 shrink-0 disabled:opacity-50"
           >
             <FileText className="w-4 h-4" />
