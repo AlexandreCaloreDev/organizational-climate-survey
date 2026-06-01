@@ -23,6 +23,7 @@ function AnalyticsDashboardContent() {
   
   const [dados, setDados] = useState<RelatorioAnalyticsResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
   
   const [ciclosDisponiveis, setCiclosDisponiveis] = useState<Ciclo[]>([]);
   const [pesquisasDisponiveis, setPesquisasDisponiveis] = useState<Pesquisa[]>([]);
@@ -109,28 +110,56 @@ function AnalyticsDashboardContent() {
         const cicloParam = cicloSelecionado === "todos" ? "todos" : cicloSelecionado;
         
         let setorParam: string | null = null;
+        let setorNome: string | null = null;
         if (pesquisaSelecionada !== "todos") {
           const matchSurvey = pesquisasDisponiveis.find(
             p => p.id_pesquisa.toString() === pesquisaSelecionada
           );
-          if (matchSurvey && matchSurvey.id_setor) {
-            setorParam = matchSurvey.id_setor.toString();
+          if (matchSurvey) {
+            if (matchSurvey.id_setor) {
+              setorParam = matchSurvey.id_setor.toString();
+            }
+            setorNome = matchSurvey.setor?.nome_setor || null;
           }
         }
 
         const data = await dashboardService.getAnalyticsReport(cicloParam, setorParam);
-        setDados(data);
+        
+        if (data && data.kpis && data.kpis.length > 0) {
+          setDados(data);
+          setIsDemoMode(false);
+        } else {
+          // Fallback se dados vazios da API
+          const cicloObj = ciclosDisponiveis.find(c => c.id_ciclo.toString() === cicloSelecionado);
+          const cicloNome = cicloObj ? cicloObj.nome : "Período de Avaliação";
+          setDados(getMockAnalyticsData(cicloNome, setorNome));
+          setIsDemoMode(true);
+        }
       } catch (error) {
-        console.error("Erro ao buscar analytics:", error);
+        console.error("Erro ao buscar analytics, carregando dados demo:", error);
+        const cicloObj = ciclosDisponiveis.find(c => c.id_ciclo.toString() === cicloSelecionado);
+        const cicloNome = cicloObj ? cicloObj.nome : "Período de Avaliação";
+        
+        let setorNome: string | null = null;
+        if (pesquisaSelecionada !== "todos") {
+          const matchSurvey = pesquisasDisponiveis.find(
+            p => p.id_pesquisa.toString() === pesquisaSelecionada
+          );
+          if (matchSurvey) {
+            setorNome = matchSurvey.setor?.nome_setor || null;
+          }
+        }
+        setDados(getMockAnalyticsData(cicloNome, setorNome));
+        setIsDemoMode(true);
       } finally {
         setIsLoading(false);
       }
     };
 
-    if (pesquisasDisponiveis.length > 0 || cicloSelecionado === "todos") {
+    if (pesquisasDisponiveis.length > 0 || (ciclosDisponiveis.length > 0 && cicloSelecionado !== "todos")) {
       fetchAnalytics();
     }
-  }, [cicloSelecionado, pesquisaSelecionada, pesquisasDisponiveis]);
+  }, [cicloSelecionado, pesquisaSelecionada, pesquisasDisponiveis, ciclosDisponiveis]);
 
   // Identifica o objeto da pesquisa para o Cenário 4 (Pesquisa específica)
   const pesquisaCorrespondente = React.useMemo(() => {
@@ -205,6 +234,18 @@ function AnalyticsDashboardContent() {
           </Button>
         </div>
       </div>
+
+      {isDemoMode && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg flex items-center justify-between shadow-sm animate-in fade-in duration-300 print:hidden">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+            <span className="text-sm font-medium text-left">
+              <strong>Modo de Demonstração ativo:</strong> Nenhum dado real foi encontrado para este ciclo no banco de dados. Exibindo métricas e análises simuladas de clima organizacional para fins de apresentação e avaliação.
+            </span>
+          </div>
+          <span className="text-xs bg-amber-200 text-amber-900 px-2 py-0.5 rounded font-bold uppercase tracking-wider shrink-0 ml-4">Demo</span>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex flex-col items-center justify-center h-64 space-y-4 bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
@@ -399,3 +440,36 @@ export default function AnalyticsDashboardPage() {
     </Suspense>
   );
 }
+
+// Injetor de dados de simulação (Demo/Mock) para visualização robusta
+const getMockAnalyticsData = (cicloNome: string, setorNome?: string | null): RelatorioAnalyticsResponse => {
+  const labelSetor = setorNome || "Geral";
+  return {
+    kpis: [
+      { categoria: "Demandas do Trabalho", score: 72.5, delta_anterior: 4.2 },
+      { categoria: "Autonomia e Controle", score: 68.0, delta_anterior: -1.5 },
+      { categoria: "Apoio da Chefia", score: 58.4, delta_anterior: 2.8 },
+      { categoria: "Relacionamentos", score: 81.3, delta_anterior: 5.1 },
+    ],
+    radar: [
+      { categoria: "Demandas do Trabalho", "RH": 75, "Produção": 68, "TI": 74, "Geral": 72.5 },
+      { categoria: "Autonomia e Controle", "RH": 65, "Produção": 70, "TI": 69, "Geral": 68.0 },
+      { categoria: "Apoio da Chefia", "RH": 55, "Produção": 60, "TI": 60, "Geral": 58.4 },
+      { categoria: "Relacionamentos", "RH": 80, "Produção": 85, "TI": 79, "Geral": 81.3 },
+    ],
+    heatmap: [
+      { setor: "RH", dimensoes: { "Demandas do Trabalho": 75, "Autonomia e Controle": 65, "Apoio da Chefia": 55, "Relacionamentos": 80 } },
+      { setor: "Produção", dimensoes: { "Demandas do Trabalho": 68, "Autonomia e Controle": 70, "Apoio da Chefia": 60, "Relacionamentos": 85 } },
+      { setor: "TI", dimensoes: { "Demandas do Trabalho": 74, "Autonomia e Controle": 69, "Apoio da Chefia": 60, "Relacionamentos": 79 } },
+    ],
+    evolucao: [
+      { ciclo: "Ciclo Anterior 1", dimensoes: { "Demandas do Trabalho": 68.0, "Autonomia e Controle": 65.0, "Apoio da Chefia": 54.0, "Relacionamentos": 76.0 } },
+      { ciclo: "Ciclo Anterior 2", dimensoes: { "Demandas do Trabalho": 70.0, "Autonomia e Controle": 67.0, "Apoio da Chefia": 56.0, "Relacionamentos": 79.0 } },
+      { ciclo: cicloNome, dimensoes: { "Demandas do Trabalho": 72.5, "Autonomia e Controle": 68.0, "Apoio da Chefia": 58.4, "Relacionamentos": 81.3 } },
+    ],
+    planos_de_acao: [
+      { risco: "Sobrecarga de Trabalho (Organização do Trabalho)", recomendacao: "Reavaliar metas semanais e redistribuir demandas para evitar sobrecarga e estresse mental.", setor: labelSetor },
+      { risco: "Iluminação inadequada (Condições Ambientais)", recomendacao: "Realizar medição de iluminância e adequar a disposição de luminárias no setor.", setor: labelSetor },
+    ]
+  };
+};
