@@ -33,8 +33,16 @@ func (h *CicloHandler) RegisterRoutes(router *mux.Router) {
 }
 
 func (h *CicloHandler) Create(w http.ResponseWriter, r *http.Request) {
-	empresaIDStr := r.Context().Value("empresa_id").(string)
-	empresaID, _ := strconv.Atoi(empresaIDStr)
+	empresaIDVal := r.Context().Value("empresa_id")
+	if empresaIDVal == nil {
+		response.WriteError(w, http.StatusUnauthorized, "Acesso não autorizado", "")
+		return
+	}
+	empresaID, ok := empresaIDVal.(int)
+	if !ok {
+		response.WriteError(w, http.StatusBadRequest, "ID da empresa inválido", "")
+		return
+	}
 
 	var req struct {
 		Nome        string  `json:"nome"`
@@ -56,8 +64,16 @@ func (h *CicloHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *CicloHandler) List(w http.ResponseWriter, r *http.Request) {
-	empresaIDStr := r.Context().Value("empresa_id").(string)
-	empresaID, _ := strconv.Atoi(empresaIDStr)
+	empresaIDVal := r.Context().Value("empresa_id")
+	if empresaIDVal == nil {
+		response.WriteError(w, http.StatusUnauthorized, "Acesso não autorizado", "")
+		return
+	}
+	empresaID, ok := empresaIDVal.(int)
+	if !ok {
+		response.WriteError(w, http.StatusBadRequest, "ID da empresa inválido", "")
+		return
+	}
 
 	ciclos, err := h.useCase.ListByEmpresa(r.Context(), empresaID)
 	if err != nil {

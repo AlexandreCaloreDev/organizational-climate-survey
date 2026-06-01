@@ -186,11 +186,16 @@ function AnalyticsDashboardContent() {
           </div>
 
           <Button 
-            onClick={() => window.print()}
-            className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center justify-center gap-2 h-10 px-4 shrink-0"
+            onClick={() => {
+              if (pesquisaSelecionada !== "todos") {
+                router.push(`/relatorios/${pesquisaSelecionada}`);
+              }
+            }}
+            disabled={pesquisaSelecionada === "todos"}
+            className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center justify-center gap-2 h-10 px-4 shrink-0 disabled:opacity-50"
           >
-            <Printer className="w-4 h-4" />
-            Exportar Relatório
+            <FileText className="w-4 h-4" />
+            Visualizar Relatório
           </Button>
         </div>
       </div>

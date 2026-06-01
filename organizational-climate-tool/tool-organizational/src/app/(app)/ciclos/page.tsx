@@ -26,13 +26,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function CiclosPage() {
   const { user } = useAuth();
   const [ciclos, setCiclos] = useState<Ciclo[]>([]);
   const [isLoadingCiclos, setIsLoadingCiclos] = useState(true);
   const [nomeCiclo, setNomeCiclo] = useState("");
-  const [recorrencia, setRecorrencia] = useState("");
+  
+  // Estados para recorrência detalhada
+  const [hasRecorrencia, setHasRecorrencia] = useState(false);
+  const [recorrenciaQtd, setRecorrenciaQtd] = useState(1);
+  const [recorrenciaUnidade, setRecorrenciaUnidade] = useState<"mes" | "ano">("mes");
   
   const [isAddingCiclo, setIsAddingCiclo] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -63,16 +75,26 @@ export default function CiclosPage() {
       toast.error("O nome do ciclo é obrigatório.");
       return;
     }
+    
+    // Concatena a recorrência final ex: "6 meses" ou "1 ano"
+    const finalRecorrencia = hasRecorrencia
+      ? (recorrenciaUnidade === "mes"
+          ? (recorrenciaQtd === 1 ? "1 mês" : `${recorrenciaQtd} meses`)
+          : (recorrenciaQtd === 1 ? "1 ano" : `${recorrenciaQtd} anos`))
+      : undefined;
+
     try {
       setIsAddingCiclo(true);
       const novoCiclo = await cicloService.create(Number(user?.empresa_id), {
         nome: nomeCiclo.trim(),
-        recorrencia: recorrencia.trim() || undefined,
+        recorrencia: finalRecorrencia,
       });
       toast.success("Ciclo de avaliação criado com sucesso!");
       setCiclos((prev) => [...prev, novoCiclo]);
       setNomeCiclo("");
-      setRecorrencia("");
+      setHasRecorrencia(false);
+      setRecorrenciaQtd(1);
+      setRecorrenciaUnidade("mes");
       setIsDialogOpen(false);
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.response?.data?.error || "Erro ao adicionar o ciclo. Tente novamente.";
@@ -198,16 +220,50 @@ export default function CiclosPage() {
                   required
                 />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="recorrencia" className="text-slate-700">Recorrência (Opcional)</Label>
-                <Input
-                  id="recorrencia"
-                  placeholder="Ex: Anual, Semestral, Mensal..."
-                  value={recorrencia}
-                  onChange={(e) => setRecorrencia(e.target.value)}
-                  className="bg-slate-50"
+              <div className="flex items-center justify-between border-t border-slate-100 pt-4 mt-2">
+                <div className="space-y-0.5">
+                  <Label htmlFor="switch-recorrencia" className="text-slate-700 font-semibold text-sm">Definir Recorrência?</Label>
+                  <p className="text-xs text-slate-500">Configure um período recorrente para este ciclo.</p>
+                </div>
+                <Switch
+                  id="switch-recorrencia"
+                  checked={hasRecorrencia}
+                  onCheckedChange={setHasRecorrencia}
                 />
               </div>
+
+              {hasRecorrencia && (
+                <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-200">
+                  <div className="grid gap-2">
+                    <Label htmlFor="recorrenciaQtd" className="text-slate-700">Quantidade</Label>
+                    <Input
+                      id="recorrenciaQtd"
+                      type="number"
+                      min={1}
+                      max={99}
+                      value={recorrenciaQtd}
+                      onChange={(e) => setRecorrenciaQtd(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="bg-slate-50"
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="recorrenciaUnidade" className="text-slate-700">Período</Label>
+                    <Select
+                      value={recorrenciaUnidade}
+                      onValueChange={(v) => setRecorrenciaUnidade(v as "mes" | "ano")}
+                    >
+                      <SelectTrigger id="recorrenciaUnidade" className="bg-slate-50">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="mes">Mês / Meses</SelectItem>
+                        <SelectItem value="ano">Ano / Anos</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button 

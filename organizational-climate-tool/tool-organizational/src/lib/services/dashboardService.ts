@@ -48,85 +48,90 @@ export const dashboardService = {
       let sumNps = 0;
       let countNpsQuestions = 0;
       
-      // Itera por todas as pesquisas para agregar as estatísticas
-      for (const p of pesquisas || []) {
+      // Executa as buscas para todas as pesquisas em paralelo
+      const promessas = (pesquisas || []).map(async (p) => {
         const idPesquisa = p.id_pesquisa || p.id;
-        if (!idPesquisa) continue;
-        
-        // Pega os stats de cada pesquisa — ignora silenciosamente se falhar (pesquisa sem respostas)
+        if (!idPesquisa) return null;
+
         try {
-          let stats: Record<string, Record<string, number>> = {};
-          try {
-            const queryParams = startDate && endDate ? `?start_date=${startDate}&end_date=${endDate}` : '';
-            stats = await apiGet<Record<string, Record<string, number>>>(`/pesquisas/${idPesquisa}/respostas/stats${queryParams}`);
-          } catch {
-            // Pesquisa sem respostas retorna 500 — normal, prosseguimos com stats vazio
-          }
-          const perguntas = await apiGet<any[]>(`/pesquisas/${idPesquisa}/perguntas`);
+          const queryParams = startDate && endDate ? `?start_date=${startDate}&end_date=${endDate}` : '';
+          const [stats, perguntas] = await Promise.all([
+            apiGet<Record<string, Record<string, number>>>(`/pesquisas/${idPesquisa}/respostas/stats${queryParams}`).catch(() => ({} as Record<string, Record<string, number>>)),
+            apiGet<any[]>(`/pesquisas/${idPesquisa}/perguntas`).catch(() => [])
+          ]);
+          return { p, stats, perguntas };
+        } catch (err) {
+          console.warn("Erro ao buscar dados da pesquisa", idPesquisa, err);
+          return null;
+        }
+      });
+
+      const resultados = await Promise.all(promessas);
+
+      // Agrega as estatísticas dos resultados obtidos
+      for (const res of resultados) {
+        if (!res) continue;
+        const { p, stats, perguntas } = res;
+        
+        let respNaPesquisa = 0;
+        
+        perguntas?.forEach(pergunta => {
+          const qId = String(pergunta.id_pergunta);
+          const dist = stats[qId] || {};
           
-          let respNaPesquisa = 0;
+          let respostasNestaPergunta = 0;
+          let somaValores = 0;
+          let promoters = 0;
+          let detractors = 0;
+          let totalScaleAnswers = 0;
           
-          perguntas?.forEach(pergunta => {
-            const qId = String(pergunta.id_pergunta);
-            const dist = stats[qId] || {};
-            
-            let respostasNestaPergunta = 0;
-            let somaValores = 0;
-            let promoters = 0;
-            let detractors = 0;
-            let totalScaleAnswers = 0;
-            
-            Object.entries(dist).forEach(([val, count]) => {
-              const qty = Number(count);
-              respostasNestaPergunta += qty;
-              if (pergunta.tipo_pergunta === 'EscalaNumerica') {
-                somaValores += Number(val) * qty;
-                const note = Number(val);
-                totalScaleAnswers += qty;
-                if (note >= 9) {
-                  promoters += qty;
-                } else if (note <= 6) {
-                  detractors += qty;
-                }
-              }
-            });
-            
-            if (respostasNestaPergunta > respNaPesquisa) {
-              respNaPesquisa = respostasNestaPergunta;
-            }
-            
-            let media = undefined;
-            if (pergunta.tipo_pergunta === 'EscalaNumerica' && respostasNestaPergunta > 0) {
-              media = somaValores / respostasNestaPergunta;
-              
-              if (totalScaleAnswers > 0) {
-                const nps = ((promoters - detractors) / totalScaleAnswers) * 100;
-                sumNps += nps;
-                countNpsQuestions++;
+          Object.entries(dist).forEach(([val, count]) => {
+            const qty = Number(count);
+            respostasNestaPergunta += qty;
+            if (pergunta.tipo_pergunta === 'EscalaNumerica') {
+              somaValores += Number(val) * qty;
+              const note = Number(val);
+              totalScaleAnswers += qty;
+              if (note >= 9) {
+                promoters += qty;
+              } else if (note <= 6) {
+                detractors += qty;
               }
             }
-            
-            perguntasGlobais.push({
-              id_pergunta: pergunta.id_pergunta,
-              texto_pergunta: pergunta.texto_pergunta,
-              tipo_pergunta: pergunta.tipo_pergunta,
-              media: media,
-              distribuicao: dist,
-              total_respostas: respostasNestaPergunta
-            });
           });
           
-          totalRespostas += respNaPesquisa;
+          if (respostasNestaPergunta > respNaPesquisa) {
+            respNaPesquisa = respostasNestaPergunta;
+          }
           
-          // Participação mockada simples (em um sistema real, seria Resp/TotalFuncionarios do Setor)
-          // Usaremos o total de respostas como % para fins de engajamento do gráfico
-          const participacao = respNaPesquisa > 0 ? Math.min(100, Math.round((respNaPesquisa / (p.participantes || respNaPesquisa || 1)) * 100)) : 0;
-          totalTaxa += participacao;
-          countPesquisas++;
+          let media = undefined;
+          if (pergunta.tipo_pergunta === 'EscalaNumerica' && respostasNestaPergunta > 0) {
+            media = somaValores / respostasNestaPergunta;
+            
+            if (totalScaleAnswers > 0) {
+              const nps = ((promoters - detractors) / totalScaleAnswers) * 100;
+              sumNps += nps;
+              countNpsQuestions++;
+            }
+          }
           
-        } catch {
-          console.warn("Erro ao buscar stats da pesquisa", idPesquisa);
-        }
+          perguntasGlobais.push({
+            id_pergunta: pergunta.id_pergunta,
+            texto_pergunta: pergunta.texto_pergunta,
+            tipo_pergunta: pergunta.tipo_pergunta,
+            media: media,
+            distribuicao: dist,
+            total_respostas: respostasNestaPergunta
+          });
+        });
+        
+        totalRespostas += respNaPesquisa;
+        
+        // Participação mockada simples (em um sistema real, seria Resp/TotalFuncionarios do Setor)
+        // Usaremos o total de respostas como % para fins de engajamento do gráfico
+        const participacao = respNaPesquisa > 0 ? Math.min(100, Math.round((respNaPesquisa / (p.participantes || respNaPesquisa || 1)) * 100)) : 0;
+        totalTaxa += participacao;
+        countPesquisas++;
       }
       
       const taxa_participacao = countPesquisas > 0 ? Math.round(totalTaxa / countPesquisas) : 0;
