@@ -163,6 +163,7 @@ const PesquisasPage = () => {
             <SelectItem value="Ativa">Ativas</SelectItem>
             <SelectItem value="Concluída">Concluídas</SelectItem>
             <SelectItem value="Arquivada">Arquivadas</SelectItem>
+          </SelectContent>
         </Select>
         <Select
           value={cicloFilter}

@@ -169,6 +169,7 @@ func (r *PesquisaRepository) ListByEmpresa(ctx context.Context, empresaID int) (
 
 	for rows.Next() {
 		pesquisa := &entity.Pesquisa{}
+		var nullCiclo sql.NullInt32
 		err := rows.Scan(
 			&pesquisa.ID,
 			&pesquisa.IDEmpresa,
@@ -184,11 +185,15 @@ func (r *PesquisaRepository) ListByEmpresa(ctx context.Context, empresaID int) (
 			&pesquisa.QRCodePath,
 			&pesquisa.ConfigRecorrencia,
 			&pesquisa.Anonimato,
-			&pesquisa.IDCiclo,
+			&nullCiclo,
 		)
 		if err != nil {
 			r.logger.Error("erro ao escanear pesquisa: %v", err)
 			return nil, fmt.Errorf("erro ao escanear pesquisa: %v", err)
+		}
+		if nullCiclo.Valid {
+			v := int(nullCiclo.Int32)
+			pesquisa.IDCiclo = &v
 		}
 		pesquisas = append(pesquisas, pesquisa)
 	}
@@ -224,6 +229,7 @@ func (r *PesquisaRepository) ListBySetor(ctx context.Context, setorID int) ([]*e
 
 	for rows.Next() {
 		pesquisa := &entity.Pesquisa{}
+		var nullCiclo sql.NullInt32
 		err := rows.Scan(
 			&pesquisa.ID,
 			&pesquisa.IDEmpresa,
@@ -239,11 +245,15 @@ func (r *PesquisaRepository) ListBySetor(ctx context.Context, setorID int) ([]*e
 			&pesquisa.QRCodePath,
 			&pesquisa.ConfigRecorrencia,
 			&pesquisa.Anonimato,
-			&pesquisa.IDCiclo,
+			&nullCiclo,
 		)
 		if err != nil {
 			r.logger.Error("erro ao escanear pesquisa: %v", err)
 			return nil, fmt.Errorf("erro ao escanear pesquisa: %v", err)
+		}
+		if nullCiclo.Valid {
+			v := int(nullCiclo.Int32)
+			pesquisa.IDCiclo = &v
 		}
 		pesquisas = append(pesquisas, pesquisa)
 	}
@@ -279,6 +289,7 @@ func (r *PesquisaRepository) ListByStatus(ctx context.Context, empresaID int, st
 
 	for rows.Next() {
 		pesquisa := &entity.Pesquisa{}
+		var nullCiclo sql.NullInt32
 		err := rows.Scan(
 			&pesquisa.ID,
 			&pesquisa.IDEmpresa,
@@ -294,11 +305,15 @@ func (r *PesquisaRepository) ListByStatus(ctx context.Context, empresaID int, st
 			&pesquisa.QRCodePath,
 			&pesquisa.ConfigRecorrencia,
 			&pesquisa.Anonimato,
-			&pesquisa.IDCiclo,
+			&nullCiclo,
 		)
 		if err != nil {
 			r.logger.Error("erro ao escanear pesquisa: %v", err)
 			return nil, fmt.Errorf("erro ao escanear pesquisa: %v", err)
+		}
+		if nullCiclo.Valid {
+			v := int(nullCiclo.Int32)
+			pesquisa.IDCiclo = &v
 		}
 		pesquisas = append(pesquisas, pesquisa)
 	}
@@ -336,6 +351,7 @@ func (r *PesquisaRepository) ListActive(ctx context.Context, empresaID int) ([]*
 
 	for rows.Next() {
 		pesquisa := &entity.Pesquisa{}
+		var nullCiclo sql.NullInt32
 		err := rows.Scan(
 			&pesquisa.ID,
 			&pesquisa.IDEmpresa,
@@ -351,11 +367,15 @@ func (r *PesquisaRepository) ListActive(ctx context.Context, empresaID int) ([]*
 			&pesquisa.QRCodePath,
 			&pesquisa.ConfigRecorrencia,
 			&pesquisa.Anonimato,
-			&pesquisa.IDCiclo,
+			&nullCiclo,
 		)
 		if err != nil {
 			r.logger.Error("erro ao escanear pesquisa: %v", err)
 			return nil, fmt.Errorf("erro ao escanear pesquisa: %v", err)
+		}
+		if nullCiclo.Valid {
+			v := int(nullCiclo.Int32)
+			pesquisa.IDCiclo = &v
 		}
 		pesquisas = append(pesquisas, pesquisa)
 	}

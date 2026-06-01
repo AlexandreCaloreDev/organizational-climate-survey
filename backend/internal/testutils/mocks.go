@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"organizational-climate-survey/backend/internal/domain/entity"
+	"organizational-climate-survey/backend/internal/application/dto/response"
 	"time"
 )
 
@@ -491,6 +492,31 @@ func (m *MockAnalyticsRepository) GetSetorComparison(ctx context.Context, empres
 		return m.GetSetorComparisonFunc(ctx, empresaID, pesquisaID)
 	}
 	return map[string]interface{}{}, nil
+}
+
+func (m *MockAnalyticsRepository) GetScoresGlobaisPorCiclo(ctx context.Context, idEmpresa int, ciclo string) ([]response.AnalyticsKPI, error) {
+	return nil, nil
+}
+func (m *MockAnalyticsRepository) GetRadarSetores(ctx context.Context, idEmpresa int, ciclo string) ([]map[string]interface{}, error) {
+	return nil, nil
+}
+func (m *MockAnalyticsRepository) GetHeatmapGlobal(ctx context.Context, idEmpresa int, ciclo string) ([]response.HeatmapData, error) {
+	return nil, nil
+}
+func (m *MockAnalyticsRepository) GetRiscosGlobais(ctx context.Context, idEmpresa int, ciclo string) ([]response.ActionPlan, error) {
+	return nil, nil
+}
+func (m *MockAnalyticsRepository) GetScoresSetorPorCiclo(ctx context.Context, idEmpresa int, idSetor int, ciclo string) ([]response.AnalyticsKPI, error) {
+	return nil, nil
+}
+func (m *MockAnalyticsRepository) GetHistoricoSetor(ctx context.Context, idEmpresa int, idSetor int) ([]response.LineChartData, error) {
+	return nil, nil
+}
+func (m *MockAnalyticsRepository) GetHistoricoEmpresaGlobal(ctx context.Context, idEmpresa int) ([]response.LineChartData, error) {
+	return nil, nil
+}
+func (m *MockAnalyticsRepository) GetRiscosSetor(ctx context.Context, idEmpresa int, idSetor int, ciclo string) ([]response.ActionPlan, error) {
+	return nil, nil
 }
 
 type MockSubmissaoPesquisaRepository struct {

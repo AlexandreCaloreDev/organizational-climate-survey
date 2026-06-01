@@ -129,13 +129,12 @@ export function CreateSurveyForm({ onClose }: CreateSurveyFormProps) {
     },
   });
 
-  // USE useFieldArray CORRETAMENTE
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "questions",
   });
 
-  // Carregar setores da empresa ao montar o componente
+  // Carregar setores, ciclos e pesquisas existentes da empresa ao montar o componente
   useEffect(() => {
     const empresaId = user?.empresa_id ? Number(user.empresa_id) : 1;
     setorService
@@ -160,7 +159,6 @@ export function CreateSurveyForm({ onClose }: CreateSurveyFormProps) {
       .catch(() => toast.error("Não foi possível carregar os ciclos."))
       .finally(() => setIsLoadingCiclos(false));
 
-    // Carregar pesquisas existentes para opção de cópia
     pesquisaService
       .listByEmpresa(empresaId)
       .then((data) => {
@@ -198,18 +196,16 @@ export function CreateSurveyForm({ onClose }: CreateSurveyFormProps) {
           }))
         );
       } catch (batchError) {
-        // Rollback da pesquisa caso as perguntas falhem
         if (pesquisaCriadaId) {
           await pesquisaService.delete(pesquisaCriadaId).catch(() => console.error("Falha no rollback da pesquisa."));
         }
-        throw batchError; // Relança para o catch externo / interceptor
+        throw batchError;
       }
 
       toast.success("Pesquisa criada com sucesso!");
-      if (onClose) onClose(); // Fecha o modal após o sucesso
+      if (onClose) onClose();
     } catch (error) {
       console.error("Erro ao criar pesquisa/perguntas:", error);
-      // O interceptor global exibirá o toast.error automaticamente
     }
   };
 
@@ -240,21 +236,29 @@ export function CreateSurveyForm({ onClose }: CreateSurveyFormProps) {
             <Loader2 className="h-4 w-4 animate-spin" /> Carregando ciclos...
           </div>
         ) : (
-          <Select
-            onValueChange={(value) => form.setValue("id_ciclo", value, { shouldValidate: true })}
-            value={form.watch("id_ciclo")}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione o ciclo de avaliação" />
-            </SelectTrigger>
-            <SelectContent>
-              {ciclos.map((c) => (
-                <SelectItem key={c.id_ciclo} value={String(c.id_ciclo)}>
-                  {c.nome} {c.recorrencia ? `(${c.recorrencia})` : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <>
+            <Select
+              disabled={ciclos.length === 0}
+              onValueChange={(value) => form.setValue("id_ciclo", value, { shouldValidate: true })}
+              value={form.watch("id_ciclo")}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={ciclos.length === 0 ? "Nenhum ciclo cadastrado" : "Selecione o ciclo de avaliação"} />
+              </SelectTrigger>
+              <SelectContent>
+                {ciclos.map((c) => (
+                  <SelectItem key={c.id_ciclo} value={String(c.id_ciclo)}>
+                    {c.nome} {c.recorrencia ? `(${c.recorrencia})` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {ciclos.length === 0 && (
+              <p className="text-xs text-amber-600 font-semibold mt-1">
+                Atenção: Você precisa cadastrar pelo menos um ciclo de avaliação na aba "Gestão de Ciclos" antes de criar pesquisas.
+              </p>
+            )}
+          </>
         )}
         {form.formState.errors.id_ciclo && (
           <p className="text-red-500 text-sm">{form.formState.errors.id_ciclo.message}</p>
@@ -268,9 +272,7 @@ export function CreateSurveyForm({ onClose }: CreateSurveyFormProps) {
             <Lightbulb className="h-4 w-4" />
             Copiar Perguntas de Pesquisa Anterior
           </Label>
-          <Select
-            onValueChange={handleCopyQuestionsFromSurvey}
-          >
+          <Select onValueChange={handleCopyQuestionsFromSurvey}>
             <SelectTrigger className="bg-white">
               <SelectValue placeholder="Selecione uma pesquisa existente para copiar" />
             </SelectTrigger>
@@ -321,7 +323,7 @@ export function CreateSurveyForm({ onClose }: CreateSurveyFormProps) {
         {fields.map((field, index) => {
           const qType = form.watch(`questions.${index}.type`);
           return (
-            <Card key={field.id} className="p-4 border-l-4 border-blue-500">
+            <Card key={field.id} className="p-4 border-l-4 border-blue-500 bg-white">
               <div className="flex justify-between items-start mb-3">
                 <h4 className="font-medium">Pergunta #{index + 1}</h4>
                 <Button
@@ -364,7 +366,6 @@ export function CreateSurveyForm({ onClose }: CreateSurveyFormProps) {
                 )}
               </div>
 
-              {/* Lógica para Opções (Apenas para Múltipla Escolha/Escala) */}
               {(qType === "radio" || qType === "checkbox") && (
                 <QuestionOptions
                   questionIndex={index}
@@ -384,7 +385,7 @@ export function CreateSurveyForm({ onClose }: CreateSurveyFormProps) {
 
       {/* Botão de Submissão */}
       <div className="flex justify-end pt-4 border-t">
-        <Button type="submit" disabled={form.formState.isSubmitting}>
+        <Button type="submit" disabled={form.formState.isSubmitting || ciclos.length === 0}>
           {form.formState.isSubmitting ? "Criando..." : "Criar Pesquisa"}
         </Button>
       </div>
@@ -406,7 +407,7 @@ function QuestionOptions({ questionIndex, control, register, errors }: QuestionO
   });
 
   return (
-    <div className="mt-4 p-4 border rounded-lg bg-slate-50/50 dark:bg-slate-900/50 space-y-3">
+    <div className="mt-4 p-4 border rounded-lg bg-slate-50/50 space-y-3">
       <div className="flex items-center justify-between">
         <Label className="text-sm font-semibold">Opções de Resposta</Label>
         <Button
@@ -430,7 +431,7 @@ function QuestionOptions({ questionIndex, control, register, errors }: QuestionO
             <Input
               placeholder={`Opção ${optionIndex + 1}`}
               {...register(`questions.${questionIndex}.options.${optionIndex}.text` as const)}
-              className="bg-white dark:bg-black"
+              className="bg-white"
             />
             <Button
               type="button"

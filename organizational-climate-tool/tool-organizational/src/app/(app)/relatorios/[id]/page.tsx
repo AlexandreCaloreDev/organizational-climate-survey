@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   Bar,
   BarChart,
@@ -48,9 +48,7 @@ import {
   Minus,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { MetricHelpPopover } from "@/components/relatorio/MetricHelpPopover";
-import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { pesquisaService } from "@/lib/services/pesquisaService";
 import { respostaService } from "@/lib/services/respostaService";
@@ -59,7 +57,6 @@ import { setorService } from "@/lib/services/setorService";
 import { cicloService } from "@/lib/services/cicloService";
 import {
   buildResultsFromPerguntas,
-  calcNps,
   distToPercent,
   tipoExibeMedia,
 } from "@/lib/buildSurveyResults";
@@ -80,7 +77,6 @@ import {
   calcularDeltasHistoricos,
   calcularMediaGeralFromResults,
   identificarDimensaoDaPergunta,
-  type KpiSet,
   type EixoNR17,
 } from "@/lib/relatorioAnalytics";
 import {
@@ -248,6 +244,7 @@ function HeatmapCell({ pct }: { pct: number | null }) {
 
 const RelatorioPage = () => {
   const params = useParams();
+  const router = useRouter();
   const surveyId = params.id as string;
   const { user } = useAuth();
 
@@ -257,7 +254,9 @@ const RelatorioPage = () => {
   const [pageLoading, setPageLoading] = useState(true);
   const [eixosNR17, setEixosNR17] = useState<EixoNR17[]>([]);
   const [eixosPorSetor, setEixosPorSetor] = useState<{ setor: string; eixos: EixoNR17[] }[]>([]);
-  const [cicloAtual, setCicloAtual] = useState<string>("Este Relatório Isolado");
+  const [ciclos, setCiclos] = useState<any[]>([]);
+  const [pesquisas, setPesquisas] = useState<any[]>([]);
+  const [cicloSelecionado, setCicloSelecionado] = useState<string>("todos");
 
   useEffect(() => {
     const load = async () => {
@@ -271,17 +270,20 @@ const RelatorioPage = () => {
         let setoresLocal: { id_setor: number; nome_setor: string }[] = [];
         if (pesquisa?.id_empresa) {
           try {
-            const [setoresResponse, ciclosResponse] = await Promise.all([
+            const [setoresResponse, ciclosResponse, pesquisasResponse] = await Promise.all([
               setorService.listByEmpresa(pesquisa.id_empresa),
-              cicloService.listByEmpresa(pesquisa.id_empresa)
+              cicloService.listByEmpresa(pesquisa.id_empresa),
+              pesquisaService.listByEmpresa(pesquisa.id_empresa)
             ]);
             setoresLocal = setoresResponse;
             setSetoresCadastro(setoresLocal);
+            setCiclos(ciclosResponse || []);
+            setPesquisas(pesquisasResponse || []);
+
             if (pesquisa.id_ciclo) {
-              const cicloEncontrado = ciclosResponse.find((c: any) => c.id_ciclo === pesquisa.id_ciclo);
-              if (cicloEncontrado) {
-                setCicloAtual(cicloEncontrado.nome);
-              }
+              setCicloSelecionado(pesquisa.id_ciclo.toString());
+            } else {
+              setCicloSelecionado("todos");
             }
           } catch (e) {
             console.error("Erro ao carregar filtros auxiliares", e);
@@ -426,24 +428,57 @@ const RelatorioPage = () => {
           </p>
         </div>
         
-        <div className="flex items-center gap-4">
-          <div className="w-[200px]">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-4 w-full md:w-auto">
+          <div className="w-full sm:w-[200px]">
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Ciclo de Avaliação</label>
             <select 
               className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              value={cicloSelecionado}
               onChange={(e) => {
-                if (e.target.value === "todos") {
-                  window.location.href = "/resultados";
+                const val = e.target.value;
+                setCicloSelecionado(val);
+                if (val === "todos") {
+                  router.push("/resultados?ciclo=todos&setor=todos");
+                } else {
+                  router.push(`/resultados?ciclo=${val}&setor=todos`);
                 }
               }}
-              defaultValue="especifico"
             >
-              <option value="especifico">{cicloAtual}</option>
               <option value="todos">Todos os Períodos</option>
+              {ciclos.map((c) => (
+                <option key={c.id_ciclo} value={c.id_ciclo.toString()}>
+                  {c.nome}
+                </option>
+              ))}
             </select>
           </div>
 
-          <Button onClick={() => window.print()} className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 h-10 mt-5">
+          <div className="w-full sm:w-[220px]">
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Pesquisa / Setor</label>
+            <select 
+              className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              value={surveyId}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "todos") {
+                  router.push(`/resultados?ciclo=${cicloSelecionado}&setor=todos`);
+                } else {
+                  router.push(`/relatorios/${val}`);
+                }
+              }}
+            >
+              <option value="todos">Todas as Pesquisas</option>
+              {pesquisas
+                .filter((p) => cicloSelecionado === "todos" || p.id_ciclo === Number(cicloSelecionado))
+                .map((p) => (
+                  <option key={p.id_pesquisa} value={p.id_pesquisa.toString()}>
+                    {p.titulo} - Setor: {p.setor?.nome_setor || "Geral"}
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          <Button onClick={() => window.print()} className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2 h-10 px-4 sm:w-auto w-full">
             <Printer className="h-4 w-4" /> Exportar Laudo Técnico (PDF)
           </Button>
         </div>
