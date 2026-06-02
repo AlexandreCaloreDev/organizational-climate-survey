@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AlertTriangle, FileText, ArrowRight, BarChart2 } from "lucide-react";
+import { AlertTriangle, FileText } from "lucide-react";
 import { cicloService } from "@/lib/services/cicloService";
 import { pesquisaService } from "@/lib/services/pesquisaService";
 import { respostaService } from "@/lib/services/respostaService";
@@ -356,38 +356,6 @@ function AnalyticsDashboardContent() {
             </Card>
           )}
 
-          {/* Cenário 2: Se for uma pesquisa específica, mostramos o card de laudo encontrado */}
-          {pesquisaSelecionada !== "todos" && pesquisaCorrespondente && (
-            <Card className="border-2 border-blue-100 bg-blue-50/40 shadow-sm rounded-xl overflow-hidden">
-              <CardContent className="p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 bg-blue-600 text-white font-bold text-xs uppercase rounded-md tracking-wider">
-                      Laudo Encontrado
-                    </span>
-                    <span className="text-slate-500 text-sm">
-                      Pesquisa ID: #{pesquisaCorrespondente.id_pesquisa}
-                    </span>
-                  </div>
-                  <h4 className="text-xl font-bold text-slate-900">
-                    {pesquisaCorrespondente.titulo}
-                  </h4>
-                  <p className="text-slate-600 text-sm">
-                    Esta pesquisa pertence ao ciclo de avaliação selecionado e ao setor{" "}
-                    <strong className="text-slate-800">{pesquisaCorrespondente.setor?.nome_setor || "Geral"}</strong>.
-                    O Laudo Técnico Completo com detalhamento das perguntas da NR17 está pronto.
-                  </p>
-                </div>
-                <Button
-                  onClick={() => router.push(`/relatorios/${pesquisaCorrespondente.id_pesquisa}`)}
-                  className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-2"
-                >
-                  Visualizar Laudo Técnico Completo
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Tabela de Perguntas e Respostas */}
           <ResultsDataTable data={tableResults} />
