@@ -2,17 +2,17 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { RadarComparativo } from "@/components/analytics/RadarComparativo";
-import { HeatmapGlobal } from "@/components/analytics/HeatmapGlobal";
-import { EvolucaoHistorica } from "@/components/analytics/EvolucaoHistorica";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, TrendingDown, Minus, AlertTriangle, Lightbulb, FileText, ArrowRight, Layers, BarChart2, Printer } from "lucide-react";
-import { dashboardService } from "@/lib/services/dashboardService";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { AlertTriangle, FileText, ArrowRight, BarChart2 } from "lucide-react";
 import { cicloService } from "@/lib/services/cicloService";
 import { pesquisaService } from "@/lib/services/pesquisaService";
-import type { RelatorioAnalyticsResponse, Ciclo, Pesquisa } from "@/lib/types";
+import { respostaService } from "@/lib/services/respostaService";
+import { buildResultsFromPerguntas } from "@/lib/buildSurveyResults";
+import { ResultsDataTable } from "@/components/dashboard/ResultsDataTable";
+import type { Ciclo, Pesquisa } from "@/lib/types";
 
 function AnalyticsDashboardContent() {
   const router = useRouter();
@@ -21,9 +21,9 @@ function AnalyticsDashboardContent() {
   const [cicloSelecionado, setCicloSelecionado] = useState<string>("todos");
   const [pesquisaSelecionada, setPesquisaSelecionada] = useState<string>("todos");
   
-  const [dados, setDados] = useState<RelatorioAnalyticsResponse | null>(null);
+  const [tableResults, setTableResults] = useState<any[]>([]);
+  const [resumosSetores, setResumosSetores] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
   
   const [ciclosDisponiveis, setCiclosDisponiveis] = useState<Ciclo[]>([]);
   const [pesquisasDisponiveis, setPesquisasDisponiveis] = useState<Pesquisa[]>([]);
@@ -102,64 +102,136 @@ function AnalyticsDashboardContent() {
     router.push(`/resultados?${params.toString()}`);
   };
 
-  // Busca de Dados da API refletindo a Matriz de 4 Quadrantes baseada em Ciclo e Setor da Pesquisa
+  // Busca de Dados da API e agrega perguntas/respostas
   useEffect(() => {
-    const fetchAnalytics = async () => {
+    const fetchRealData = async () => {
       setIsLoading(true);
       try {
-        const cicloParam = cicloSelecionado === "todos" ? "todos" : cicloSelecionado;
-        
-        let setorParam: string | null = null;
-        let setorNome: string | null = null;
-        if (pesquisaSelecionada !== "todos") {
-          const matchSurvey = pesquisasDisponiveis.find(
-            p => p.id_pesquisa.toString() === pesquisaSelecionada
-          );
-          if (matchSurvey) {
-            if (matchSurvey.id_setor) {
-              setorParam = matchSurvey.id_setor.toString();
-            }
-            setorNome = matchSurvey.setor?.nome_setor || null;
-          }
+        if (pesquisasDisponiveis.length === 0) {
+          setTableResults([]);
+          setResumosSetores([]);
+          setIsLoading(false);
+          return;
         }
 
-        const data = await dashboardService.getAnalyticsReport(cicloParam, setorParam);
-        
-        if (data && data.kpis && data.kpis.length > 0) {
-          setDados(data);
-          setIsDemoMode(false);
-        } else {
-          // Fallback se dados vazios da API
-          const cicloObj = ciclosDisponiveis.find(c => c.id_ciclo.toString() === cicloSelecionado);
-          const cicloNome = cicloObj ? cicloObj.nome : "Período de Avaliação";
-          setDados(getMockAnalyticsData(cicloNome, setorNome));
-          setIsDemoMode(true);
-        }
-      } catch (error) {
-        console.error("Erro ao buscar analytics, carregando dados demo:", error);
-        const cicloObj = ciclosDisponiveis.find(c => c.id_ciclo.toString() === cicloSelecionado);
-        const cicloNome = cicloObj ? cicloObj.nome : "Período de Avaliação";
-        
-        let setorNome: string | null = null;
+        // Determina quais pesquisas foram selecionadas
+        let selectedSurveys: Pesquisa[] = [];
         if (pesquisaSelecionada !== "todos") {
-          const matchSurvey = pesquisasDisponiveis.find(
-            p => p.id_pesquisa.toString() === pesquisaSelecionada
-          );
-          if (matchSurvey) {
-            setorNome = matchSurvey.setor?.nome_setor || null;
-          }
+          const match = pesquisasDisponiveis.find(p => p.id_pesquisa.toString() === pesquisaSelecionada);
+          if (match) selectedSurveys = [match];
+        } else {
+          selectedSurveys = pesquisasFiltradas;
         }
-        setDados(getMockAnalyticsData(cicloNome, setorNome));
-        setIsDemoMode(true);
+
+        if (selectedSurveys.length === 0) {
+          setTableResults([]);
+          setResumosSetores([]);
+          setIsLoading(false);
+          return;
+        }
+
+        // Busca perguntas e respostas de cada pesquisa em paralelo
+        const surveysData = await Promise.all(
+          selectedSurveys.map(async (p) => {
+            try {
+              const [perguntas, statsRaw] = await Promise.all([
+                pesquisaService.listPerguntas(p.id_pesquisa),
+                respostaService.getStatsByPesquisa(p.id_pesquisa).catch(() => ({}))
+              ]);
+              return { p, perguntas, statsRaw };
+            } catch (err) {
+              console.error(`Erro ao carregar dados da pesquisa ${p.id_pesquisa}:`, err);
+              return { p, perguntas: [], statsRaw: {} };
+            }
+          })
+        );
+
+        // 1. Constrói o resumo por setor
+        const summaries = surveysData.map(({ p, perguntas, statsRaw }) => {
+          const stats = statsRaw as Record<string, Record<string, number>>;
+          let maxAnswers = 0;
+          perguntas.forEach((q: any) => {
+            const qId = String(q.id_pergunta);
+            const dist = stats[qId] || {};
+            const totalQ = Object.values(dist).reduce((acc, count) => acc + Number(count), 0);
+            if (totalQ > maxAnswers) {
+              maxAnswers = totalQ;
+            }
+          });
+
+          return {
+            id_pesquisa: p.id_pesquisa,
+            titulo: p.titulo,
+            setor: p.setor?.nome_setor || "Geral",
+            total_respostas: maxAnswers
+          };
+        });
+        setResumosSetores(summaries);
+
+        // 2. Agrega perguntas e respostas
+        const aggregatedQuestions: Record<string, {
+          texto_pergunta: string;
+          tipo_pergunta: string;
+          ordem_exibicao: number;
+          id_pergunta_original: number;
+          opcoes_resposta: string;
+          distribuicao: Record<string, number>;
+        }> = {};
+
+        surveysData.forEach(({ perguntas, statsRaw }) => {
+          const stats = statsRaw as Record<string, Record<string, number>>;
+          perguntas.forEach((p: any) => {
+            const normalizedText = p.texto_pergunta.trim().toLowerCase();
+            const qId = String(p.id_pergunta);
+            const dist = stats[qId] || {};
+
+            if (!aggregatedQuestions[normalizedText]) {
+              aggregatedQuestions[normalizedText] = {
+                texto_pergunta: p.texto_pergunta,
+                tipo_pergunta: p.tipo_pergunta,
+                ordem_exibicao: p.ordem_exibicao,
+                id_pergunta_original: p.id_pergunta,
+                opcoes_resposta: p.opcoes_resposta || "",
+                distribuicao: {},
+              };
+            }
+
+            const aq = aggregatedQuestions[normalizedText];
+            Object.entries(dist).forEach(([val, count]) => {
+              aq.distribuicao[val] = (aq.distribuicao[val] || 0) + Number(count);
+            });
+          });
+        });
+
+        const aggregatedPerguntasList = Object.values(aggregatedQuestions).map((aq, index) => ({
+          id_pergunta: aq.id_pergunta_original,
+          texto_pergunta: aq.texto_pergunta,
+          tipo_pergunta: aq.tipo_pergunta,
+          ordem_exibicao: index + 1,
+          opcoes_resposta: aq.opcoes_resposta,
+        }));
+
+        const aggregatedStats: Record<string, Record<string, number>> = {};
+        Object.values(aggregatedQuestions).forEach((aq) => {
+          aggregatedStats[String(aq.id_pergunta_original)] = aq.distribuicao;
+        });
+
+        const results = buildResultsFromPerguntas(aggregatedPerguntasList, aggregatedStats, {});
+        setTableResults(results);
+
+      } catch (err) {
+        console.error("Erro ao carregar dados reais de pesquisa:", err);
+        setTableResults([]);
+        setResumosSetores([]);
       } finally {
         setIsLoading(false);
       }
     };
 
     if (pesquisasDisponiveis.length > 0 || (ciclosDisponiveis.length > 0 && cicloSelecionado !== "todos")) {
-      fetchAnalytics();
+      fetchRealData();
     }
-  }, [cicloSelecionado, pesquisaSelecionada, pesquisasDisponiveis, ciclosDisponiveis]);
+  }, [cicloSelecionado, pesquisaSelecionada, pesquisasDisponiveis, ciclosDisponiveis, pesquisasFiltradas]);
 
   // Identifica o objeto da pesquisa para o Cenário 4 (Pesquisa específica)
   const pesquisaCorrespondente = React.useMemo(() => {
@@ -174,11 +246,12 @@ function AnalyticsDashboardContent() {
       {/* Header & Filtros */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white p-6 rounded-xl border border-slate-200 shadow-sm transition-all hover:shadow-md">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <BarChart2 className="w-8 h-8 text-blue-600" />
-            Relatório Cognitivo e Comportamental
-          </h1>
-          <p className="text-slate-500 mt-1">Análise de clima, riscos psicossociais e dimensões organizacionais da empresa.</p>
+          <div className="flex items-center gap-2">
+            <h1 className="w-fit text-3xl font-bold tracking-tight bg-blue-600 text-white p-2 rounded-lg">
+              Relatório Cognitivo e Comportamental
+            </h1>
+          </div>
+          <p className="text-slate-500 mt-2">Análise de clima, riscos psicossociais e dimensões organizacionais da empresa.</p>
         </div>
         
         <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-4 w-full md:w-auto print:hidden">
@@ -235,192 +308,94 @@ function AnalyticsDashboardContent() {
         </div>
       </div>
 
-      {isDemoMode && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg flex items-center justify-between shadow-sm animate-in fade-in duration-300 print:hidden">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
-            <span className="text-sm font-medium text-left">
-              <strong>Modo de Demonstração ativo:</strong> Nenhum dado real foi encontrado para este ciclo no banco de dados. Exibindo métricas e análises simuladas de clima organizacional para fins de apresentação e avaliação.
-            </span>
-          </div>
-          <span className="text-xs bg-amber-200 text-amber-900 px-2 py-0.5 rounded font-bold uppercase tracking-wider shrink-0 ml-4">Demo</span>
-        </div>
-      )}
-
       {isLoading ? (
         <div className="flex flex-col items-center justify-center h-64 space-y-4 bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
           <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-slate-600 font-semibold text-lg">Processando métricas analíticas...</p>
         </div>
-      ) : dados ? (
-        <>
-          {/* Grid de KPIs - Renderizado se vier da API */}
-          {dados.kpis && dados.kpis.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {dados.kpis.map((kpi, idx) => (
-                <Card key={idx} className="border-slate-200 shadow-sm hover:shadow-md transition-all duration-300 hover:translate-y-[-2px] bg-white break-inside-avoid print:block">
-                  <CardContent className="p-6">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 truncate">{kpi.categoria}</p>
-                    <div className="flex items-end justify-between">
-                      <h3 className="text-4xl font-extrabold text-slate-900 tracking-tight">
-                        {kpi.score.toFixed(1)}
-                        <span className="text-lg text-slate-400 font-semibold ml-1">%</span>
-                      </h3>
-                      
-                      <div className={`flex items-center gap-1 text-sm font-bold px-2 py-1 rounded-full ${
-                        kpi.delta_anterior > 0 
-                          ? "text-emerald-700 bg-emerald-50" 
-                          : kpi.delta_anterior < 0 
-                            ? "text-rose-700 bg-rose-50" 
-                            : "text-slate-500 bg-slate-50"
-                      } print:hidden`}>
-                        {kpi.delta_anterior > 0 ? (
-                          <TrendingUp className="w-4 h-4" />
-                        ) : kpi.delta_anterior < 0 ? (
-                          <TrendingDown className="w-4 h-4" />
-                        ) : (
-                          <Minus className="w-4 h-4" />
-                        )}
-                        {Math.abs(kpi.delta_anterior)}%
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-
-          {/* Lógica da Matriz de 4 Quadrantes */}
-          
-          {/* CENÁRIO 1: Visão Global do Ciclo (Pesquisa: todos + Ciclo: específico) */}
-          {pesquisaSelecionada === "todos" && cicloSelecionado !== "todos" && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <Card className="border-slate-200 shadow-sm hover:shadow-md transition-shadow bg-white break-inside-avoid print:block">
-                <CardHeader className="border-b border-slate-100">
-                  <CardTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    <Layers className="w-5 h-5 text-blue-500" />
-                    Comparativo entre Setores
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <RadarComparativo data={dados.radar || []} />
-                </CardContent>
-              </Card>
-
-              <Card className="border-slate-200 shadow-sm hover:shadow-md transition-shadow bg-white break-inside-avoid print:block">
-                <CardHeader className="border-b border-slate-100">
-                  <CardTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-indigo-500" />
-                    Matriz de Diagnóstico
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <HeatmapGlobal data={dados.heatmap || []} />
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* CENÁRIO 2 e 3: Visão Histórica (Ciclo: todos, Pesquisa: todos OU específica) */}
-          {cicloSelecionado === "todos" && (
-            <Card className="border-slate-200 shadow-sm hover:shadow-md transition-shadow bg-white break-inside-avoid print:block">
+      ) : tableResults.length > 0 ? (
+        <div className="space-y-6">
+          {/* Cenário 1: Se for mais de uma pesquisa que foi selecionada, mostramos a tabela de resumos por setor */}
+          {pesquisaSelecionada === "todos" && resumosSetores.length > 0 && (
+            <Card className="border border-slate-200 shadow-sm bg-white">
               <CardHeader className="border-b border-slate-100">
-                <CardTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-emerald-500" />
-                  {pesquisaSelecionada === "todos" ? "Evolução Histórica da Empresa" : "Evolução Histórica do Setor"}
+                <CardTitle className="text-lg font-bold text-slate-800">
+                  Resumo de Respostas por Setor
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
-                <EvolucaoHistorica data={dados.evolucao || []} />
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Setor</TableHead>
+                      <TableHead>Pesquisa</TableHead>
+                      <TableHead className="text-center">Total de Respostas</TableHead>
+                      <TableHead className="text-right">Ação</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {resumosSetores.map((r) => (
+                      <TableRow key={r.id_pesquisa}>
+                        <TableCell className="font-semibold text-slate-700">{r.setor}</TableCell>
+                        <TableCell className="text-slate-600">{r.titulo}</TableCell>
+                        <TableCell className="text-center font-medium">{r.total_respostas}</TableCell>
+                        <TableCell className="text-right">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleFiltroPesquisaChange(r.id_pesquisa.toString())}
+                          >
+                            Ver Detalhes
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           )}
-          
-          {/* CENÁRIO 4: Visão Isolada da Pesquisa naquele Ciclo (Pesquisa: específica + Ciclo: específico) */}
-          {pesquisaSelecionada !== "todos" && cicloSelecionado !== "todos" && (
-            <div className="space-y-6">
-              {pesquisaCorrespondente ? (
-                <Card className="border-2 border-blue-100 bg-blue-50/40 shadow-sm rounded-xl overflow-hidden animate-in slide-in-from-bottom duration-300 break-inside-avoid print:block">
-                  <CardContent className="p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-0.5 bg-blue-600 text-white font-bold text-xs uppercase rounded-md tracking-wider">
-                          Laudo Encontrado
-                        </span>
-                        <span className="text-slate-500 text-sm print:hidden">
-                          Pesquisa ID: #{pesquisaCorrespondente.id_pesquisa}
-                        </span>
-                      </div>
-                      <h4 className="text-xl font-bold text-slate-900">
-                        {pesquisaCorrespondente.titulo}
-                      </h4>
-                      <p className="text-slate-600 text-sm">
-                        Esta pesquisa pertence ao ciclo de avaliação selecionado e ao setor{" "}
-                        <strong className="text-slate-800">{pesquisaCorrespondente.setor?.nome_setor || "Geral"}</strong>.
-                        O Laudo Técnico Completo com detalhamento das perguntas da NR17 está pronto.
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => router.push(`/relatorios/${pesquisaCorrespondente.id_pesquisa}`)}
-                      className="cursor-pointer whitespace-nowrap bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg shadow-sm hover:shadow transition-all flex items-center gap-2 group shrink-0 print:hidden"
-                    >
-                      Visualizar Laudo Técnico Completo
-                      <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                    </button>
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card className="border-dashed border-2 border-slate-200 bg-slate-50/50 p-6 rounded-xl break-inside-avoid print:block">
-                  <CardContent className="flex flex-col items-center justify-center text-center p-4">
-                    <AlertTriangle className="w-10 h-10 text-slate-400 mb-3" />
-                    <h4 className="font-semibold text-slate-700 text-lg">Sem dados correspondentes</h4>
-                    <p className="text-slate-500 text-sm max-w-md mt-1">
-                      Não encontramos nenhuma pesquisa aplicada com estes parâmetros no momento.
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+
+          {/* Cenário 2: Se for uma pesquisa específica, mostramos o card de laudo encontrado */}
+          {pesquisaSelecionada !== "todos" && pesquisaCorrespondente && (
+            <Card className="border-2 border-blue-100 bg-blue-50/40 shadow-sm rounded-xl overflow-hidden">
+              <CardContent className="p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 bg-blue-600 text-white font-bold text-xs uppercase rounded-md tracking-wider">
+                      Laudo Encontrado
+                    </span>
+                    <span className="text-slate-500 text-sm">
+                      Pesquisa ID: #{pesquisaCorrespondente.id_pesquisa}
+                    </span>
+                  </div>
+                  <h4 className="text-xl font-bold text-slate-900">
+                    {pesquisaCorrespondente.titulo}
+                  </h4>
+                  <p className="text-slate-600 text-sm">
+                    Esta pesquisa pertence ao ciclo de avaliação selecionado e ao setor{" "}
+                    <strong className="text-slate-800">{pesquisaCorrespondente.setor?.nome_setor || "Geral"}</strong>.
+                    O Laudo Técnico Completo com detalhamento das perguntas da NR17 está pronto.
+                  </p>
+                </div>
+                <Button
+                  onClick={() => router.push(`/relatorios/${pesquisaCorrespondente.id_pesquisa}`)}
+                  className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-2"
+                >
+                  Visualizar Laudo Técnico Completo
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              </CardContent>
+            </Card>
           )}
 
-          {/* Planos de Ação e Alertas (Renderizado nos Cenários 1 e 4 se houver dados) */}
-          {dados.planos_de_acao && dados.planos_de_acao.length > 0 && (
-            <div className="mt-8 break-inside-avoid print:block">
-              <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-                <Lightbulb className="w-6 h-6 text-amber-500" />
-                Análise de Riscos e Recomendações
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {dados.planos_de_acao.map((plano, idx) => (
-                  <div 
-                    key={idx} 
-                    className="flex flex-col p-5 bg-white border-l-4 border-l-rose-500 rounded-r-lg shadow-sm border border-slate-200 transition-all hover:shadow-md hover:translate-x-[2px] break-inside-avoid print:block"
-                  >
-                    <div className="flex items-start gap-3">
-                      <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
-                      <div>
-                        <h4 className="font-bold text-slate-900 text-base">{plano.risco}</h4>
-                        {plano.setor && (
-                          <span className="inline-block mt-1.5 px-2.5 py-0.5 bg-slate-100 text-slate-600 text-xs font-semibold rounded-md">
-                            Foco: {plano.setor}
-                          </span>
-                        )}
-                        <p className="text-sm text-slate-600 mt-2.5 leading-relaxed">
-                          <span className="font-semibold text-slate-700">Ação Recomendada: </span>
-                          {plano.recomendacao}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </>
+          {/* Tabela de Perguntas e Respostas */}
+          <ResultsDataTable data={tableResults} />
+        </div>
       ) : (
         <div className="flex h-64 flex-col items-center justify-center text-slate-500 bg-white rounded-xl border border-slate-200 shadow-sm p-6">
           <AlertTriangle className="w-10 h-10 text-slate-400 mb-2" />
-          <p className="font-medium text-lg text-slate-600">Nenhum dado encontrado</p>
+          <p className="font-medium text-lg text-slate-600">Nenhum dado real encontrado</p>
           <p className="text-sm text-slate-400">Não há dados computados para a combinação de filtros selecionada.</p>
         </div>
       )}
@@ -441,35 +416,4 @@ export default function AnalyticsDashboardPage() {
   );
 }
 
-// Injetor de dados de simulação (Demo/Mock) para visualização robusta
-const getMockAnalyticsData = (cicloNome: string, setorNome?: string | null): RelatorioAnalyticsResponse => {
-  const labelSetor = setorNome || "Geral";
-  return {
-    kpis: [
-      { categoria: "Demandas do Trabalho", score: 72.5, delta_anterior: 4.2 },
-      { categoria: "Autonomia e Controle", score: 68.0, delta_anterior: -1.5 },
-      { categoria: "Apoio da Chefia", score: 58.4, delta_anterior: 2.8 },
-      { categoria: "Relacionamentos", score: 81.3, delta_anterior: 5.1 },
-    ],
-    radar: [
-      { categoria: "Demandas do Trabalho", "RH": 75, "Produção": 68, "TI": 74, "Geral": 72.5 },
-      { categoria: "Autonomia e Controle", "RH": 65, "Produção": 70, "TI": 69, "Geral": 68.0 },
-      { categoria: "Apoio da Chefia", "RH": 55, "Produção": 60, "TI": 60, "Geral": 58.4 },
-      { categoria: "Relacionamentos", "RH": 80, "Produção": 85, "TI": 79, "Geral": 81.3 },
-    ],
-    heatmap: [
-      { setor: "RH", dimensoes: { "Demandas do Trabalho": 75, "Autonomia e Controle": 65, "Apoio da Chefia": 55, "Relacionamentos": 80 } },
-      { setor: "Produção", dimensoes: { "Demandas do Trabalho": 68, "Autonomia e Controle": 70, "Apoio da Chefia": 60, "Relacionamentos": 85 } },
-      { setor: "TI", dimensoes: { "Demandas do Trabalho": 74, "Autonomia e Controle": 69, "Apoio da Chefia": 60, "Relacionamentos": 79 } },
-    ],
-    evolucao: [
-      { ciclo: "Ciclo Anterior 1", dimensoes: { "Demandas do Trabalho": 68.0, "Autonomia e Controle": 65.0, "Apoio da Chefia": 54.0, "Relacionamentos": 76.0 } },
-      { ciclo: "Ciclo Anterior 2", dimensoes: { "Demandas do Trabalho": 70.0, "Autonomia e Controle": 67.0, "Apoio da Chefia": 56.0, "Relacionamentos": 79.0 } },
-      { ciclo: cicloNome, dimensoes: { "Demandas do Trabalho": 72.5, "Autonomia e Controle": 68.0, "Apoio da Chefia": 58.4, "Relacionamentos": 81.3 } },
-    ],
-    planos_de_acao: [
-      { risco: "Sobrecarga de Trabalho (Organização do Trabalho)", recomendacao: "Reavaliar metas semanais e redistribuir demandas para evitar sobrecarga e estresse mental.", setor: labelSetor },
-      { risco: "Iluminação inadequada (Condições Ambientais)", recomendacao: "Realizar medição de iluminância e adequar a disposição de luminárias no setor.", setor: labelSetor },
-    ]
-  };
-};
+

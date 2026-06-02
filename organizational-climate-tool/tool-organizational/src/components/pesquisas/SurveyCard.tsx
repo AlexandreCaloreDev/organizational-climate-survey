@@ -131,7 +131,21 @@ export const SurveyCard = ({
         </CardContent>
         <CardFooter className="flex justify-between items-center text-sm text-muted-foreground">
           <div className="flex flex-col">
-            <span>Criado em: {creationDate}</span>
+            <span>Criado em: {(() => {
+              try {
+                const date = new Date(creationDate);
+                if (isNaN(date.getTime())) return creationDate;
+                return date.toLocaleDateString("pt-BR", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit"
+                });
+              } catch {
+                return creationDate;
+              }
+            })()}</span>
             {cicloName && (
               <span className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100 w-fit">
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
